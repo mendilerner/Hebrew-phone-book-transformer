@@ -10,9 +10,17 @@ from phonebook.settings import DEFAULTS
 
 
 def setting(config: RunnableConfig | None, name: str):
-    """A value from config["configurable"], or the default from settings.py."""
+    """A value from config["configurable"], or the default from settings.py.
+
+    Dict settings (models, tiers) are merged with the defaults, so a run can
+    change one node without listing all of them.
+    """
     configurable = (config or {}).get("configurable", {})
-    return configurable.get(name, getattr(DEFAULTS, name))
+    default = getattr(DEFAULTS, name)
+    override = configurable.get(name)
+    if override is None:
+        return default
+    return {**default, **override} if isinstance(default, dict) else override
 
 
 def model_name(node: str, config: RunnableConfig | None = None, tier: str | None = None) -> str:

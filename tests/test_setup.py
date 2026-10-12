@@ -29,6 +29,8 @@ def test_model_ladder_and_config_override():
     assert model_name("read_page", tier="strong") == "anthropic:claude-sonnet-5-5"
     config = {"configurable": {"tiers": {"read_page": "strong"}}}
     assert model_name("read_page", config) == "anthropic:claude-sonnet-5-5"
+    # other nodes keep their defaults (the override is merged, not a replacement)
+    assert model_name("classify_page", config) == "anthropic:claude-haiku-5-5"
 
 
 def test_disk_cache_answer_is_free(tmp_path):

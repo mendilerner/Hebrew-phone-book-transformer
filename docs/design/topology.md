@@ -1,4 +1,6 @@
-# Graph topology (proposal, not accepted yet)
+# Graph topology
+
+Status: accepted (PR #1, 2026-10-12).
 
 Legend: **R** = rule router, **L** = LLM router, **A** = ReAct agent,
 ⏸ = `interrupt` (human), ⇉ = `Send` (parallel fan-out).

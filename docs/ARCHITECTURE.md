@@ -80,6 +80,13 @@ See [decision 0007](decisions/0007-cost-control.md). In short:
 - Budget: default **$10 per book**, split into a share per page. Over budget → review queue.
 - Development: LLM answer cache on disk, 3-page test set, Batch API for full runs.
 
+## Tools
+
+See [`docs/design/tools.md`](design/tools.md) (proposed in decision 0008).
+Agent tools only in `read_page`: `row_view`, `crop_region`, `ink_crosses_line`,
+`check_phone`. Everything else is a free Python helper or one LLM call with
+structured output.
+
 ## Output rules
 
 - Phone numbers are kept as written (`raw`). 7-digit numbers get **no** area code added.
@@ -87,4 +94,4 @@ See [decision 0007](decisions/0007-cost-control.md). In short:
 
 ## Not decided yet
 
-Graph topology details, tool list, MVP scope, which model per node (measure on the 3-page test set).
+MVP scope, which model per node (measure on the 3-page test set).

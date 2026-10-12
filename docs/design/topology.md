@@ -43,10 +43,10 @@ flowchart TD
     classify_page -->|L: different layout| rediscover_layout
     classify_page -->|L: entries| read_page
     rediscover_layout --> read_page
-    read_page["read_page (A: agent + image tools)"] --> grade_entries
+    read_page["read_page (A: agent, max 4 tool calls)"] --> grade_entries
     grade_entries -->|R: all good| page_fix
-    grade_entries -->|R: bad, tries left| choose_fix
-    grade_entries -->|R: bad, no tries left → review_queue| page_fix
+    grade_entries -->|R: bad, tries + budget left| choose_fix
+    grade_entries -->|R: bad, no tries or no budget → review_queue| page_fix
     choose_fix["choose_fix (L)"] -->|⇉ one Send per bad row| reread_row
     reread_row --> grade_entries
     page_fix -->|R: split entry / wrong letter order| choose_fix
@@ -58,15 +58,24 @@ flowchart TD
 |---|---|---|
 | `classify_page` | entries / empty / cover / different layout | LLM router |
 | `rediscover_layout` | layout for this page only | reuses the discovery prompt |
-| `read_page` | agent reads the whole page, uses tools when unsure | ReAct agent (its own small sub-graph) |
-| `grade_entries` | rules + LLM check, sets `confidence` and `issues` | conditional edge on scores |
-| `choose_fix` | picks a fix from the grader's reason (zoom, 3-row window, second model) | LLM router + nested `Send` |
+| `read_page` | agent reads the whole page in one call, uses tools (small crops) only when unsure | ReAct agent (its own small sub-graph) |
+| `grade_entries` | Python rules first; LLM check only if rules can't decide. Sets `confidence` and `issues` | conditional edge on scores, tries and budget |
+| `choose_fix` | picks a fix from the grader's reason (zoom, 3-row window, stronger model) | LLM router + nested `Send` |
 | `reread_row` | reads one row with the chosen view | map-reduce inside a sub-graph |
 | `page_fix` | merges entries split over 2 rows, checks letter order | rule router |
 | `finalize_page` | writes `contacts`, `review_queue`, `decisions` | sub-graph output → parent reducers |
 
-## Loop limits
+## Loop and cost limits
 
 - `discover_layout`: max 2 extra tries.
 - `grade_entries` → `choose_fix` → `reread_row`: max `max_attempts` per row (default 3).
 - `page_fix` → `choose_fix`: once per page.
+- `read_page`: max 4 tool calls per page.
+- Budget: a row is retried only while the page spent less than `page_budget_usd`
+  ([decision 0007](../decisions/0007-cost-control.md)).
+
+## Models and cost
+
+- Every LLM node reads its model from `config["configurable"]` (cheap by default).
+- Every LLM call returns its cost in `cost_usd`; the `add` reducer sums it up to the book.
+- Development: LLM answer cache on disk, 3-page test set.

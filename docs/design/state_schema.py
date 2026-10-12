@@ -79,6 +79,7 @@ class PageState(TypedDict):
     image_path: str  # a path, not image bytes: keeps checkpoints small
     profile: LayoutProfile
     max_attempts: int
+    page_budget_usd: float  # this page's share of the book budget (decision 0007)
 
     # working data (stays inside the page sub-graph)
     page_kind: Literal["entries", "empty", "cover", "different_layout"] | None
@@ -90,6 +91,7 @@ class PageState(TypedDict):
     contacts: Annotated[list[Contact], add]
     review_queue: Annotated[list[Contact], add]
     decisions: Annotated[list[Decision], add]
+    cost_usd: Annotated[float, add]  # each LLM call returns its own cost; add sums them
 
 
 class BookState(TypedDict):
@@ -98,10 +100,12 @@ class BookState(TypedDict):
     sample_pages: list[int]  # pages used for layout discovery
     profile: LayoutProfile | None
     max_attempts: int
+    budget_usd: float  # max $ per book, default 10 (decision 0007)
 
     # filled by many pages in parallel -> need a reducer (add = append lists)
     contacts: Annotated[list[Contact], add]
     review_queue: Annotated[list[Contact], add]
     decisions: Annotated[list[Decision], add]
+    cost_usd: Annotated[float, add]  # total spent; pages add their cost here
 
     output_files: list[str]  # Excel + .vcf paths

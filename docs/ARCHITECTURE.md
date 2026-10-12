@@ -21,8 +21,10 @@ BOOK GRAPH (parent)
 
 PAGE SUB-GRAPH (one per page)
   check the page against the profile -> entries / empty / cover / different layout
-  read the page (ReAct agent with image tools) -> draft entries
-  grade each entry -> accept / retry (pick a fix) / second model / review queue
+  read the page (ReAct agent, one read + max 4 tool calls) -> draft entries
+  grade each entry (rules first, LLM only if unsure)
+    -> accept / retry (pick a fix) / stronger model / review queue
+    -> no retries when the page budget is used up
   page fix: split entries across rows, letter order -> re-read only those rows
 ```
 
@@ -38,7 +40,7 @@ Three kinds of decisions are used on purpose (for learning):
 | 1 | Layout discovery | clear → human confirm / unclear → more pages | R |
 | 2 | Page check | fits → continue / different → re-discover / empty or cover → skip | L |
 | 3 | Reading a page | agent uses tools (crop, zoom, "ink crosses line?", read region) | A |
-| 4 | Grade entry | accept / retry / second model / human | R |
+| 4 | Grade entry | accept / retry / stronger model / human (also checks budget) | R |
 | 5 | Pick retry fix | grader says why it failed → matching fix | L |
 | 6 | Page fix | split entry or wrong letter order → re-read those rows | R |
 | 7 | Human review | batch all doubtful entries, ask once per book | R + interrupt |
@@ -64,6 +66,19 @@ Draft: [`docs/design/state_schema.py`](design/state_schema.py).
   pages append results. Same key names in both states → passed up automatically;
   page-only keys (`skeleton`, `draft`, `attempts`) stay private.
 - Images are stored as file paths, not bytes.
+- `cost_usd` (float, `add` reducer) sums the cost of every LLM call;
+  `budget_usd` (book) and `page_budget_usd` (page) limit it.
+
+## Cost control
+
+See [decision 0007](decisions/0007-cost-control.md). In short:
+
+- One LLM read per page; only flagged rows are read again.
+- Free Python checks before any LLM grader.
+- Models come from config (`config["configurable"]`): cheap first, strong only as a fix.
+- `read_page` agent: max 4 tool calls, small crops, cached prompt + profile.
+- Budget: default **$10 per book**, split into a share per page. Over budget → review queue.
+- Development: LLM answer cache on disk, 3-page test set, Batch API for full runs.
 
 ## Output rules
 
@@ -72,4 +87,4 @@ Draft: [`docs/design/state_schema.py`](design/state_schema.py).
 
 ## Not decided yet
 
-Graph topology details, tool list, MVP scope, model choice.
+Graph topology details, tool list, MVP scope, which model per node (measure on the 3-page test set).

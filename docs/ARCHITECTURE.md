@@ -92,6 +92,12 @@ structured output.
 - Phone numbers are kept as written (`raw`). 7-digit numbers get **no** area code added.
 - Unknown columns go to `Contact.extra`.
 
+## MVP scope
+
+See [decision 0009](decisions/0009-mvp-scope.md). Everything above is in the MVP
+except `rediscover_layout`, `find_duplicates`, the `Store` (the profile stays in
+the state), and the Batch API.
+
 ## Not decided yet
 
-MVP scope, which model per node (measure on the 3-page test set).
+Which model per node (measure on the 3-page test set).

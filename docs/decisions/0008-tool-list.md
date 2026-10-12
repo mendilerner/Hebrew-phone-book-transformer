@@ -8,6 +8,8 @@ Date: 2026-10-12 · Status: Proposed (waiting for OK)
 - Everything that can be done without an LLM is a plain Python helper
   (phone parsing, rule checks, row lines, export, cost tracking).
 - Other LLM steps are single calls with structured output, not agents.
-- The agent loop is written by hand (`ToolNode` + `tools_condition`) for learning.
+- The agent is the prebuilt `create_agent` (user's choice) with
+  `ToolCallLimitMiddleware(run_limit=4)` for the cost limit. A hand-written loop
+  (`ToolNode` + `tools_condition`) was the other option: more visible, more code.
 
 **Consequences:** Few paid calls. Helpers can be unit-tested without an API key.

@@ -19,8 +19,11 @@ Three kinds of "tools". Only the first kind is a real LLM tool.
 
 - Image tools return an **image** in the tool message, so the model sees it.
 - Image tools only cut the page file on disk; the state keeps only paths.
-- The loop is built **by hand** (`ToolNode` + `tools_condition` + a call counter),
-  not a prebuilt agent, so the LangGraph parts stay visible.
+- The agent is the **prebuilt** `create_agent` (LangChain 1.x), with
+  `ToolCallLimitMiddleware(run_limit=4)` (default `exit_behavior="continue"`: after
+  4 calls tools are blocked, and the model must answer with what it has).
+  Inside, it is the same 2-node graph (`model` ⇄ `tools`).
+  `response_format` can return the draft `Contact` list as structured output.
 
 ## 2. Python helpers (no LLM, free)
 

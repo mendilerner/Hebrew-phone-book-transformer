@@ -34,7 +34,7 @@ def fake_llm(monkeypatch, kind, entries=()):
         calls.append(("classify", model))
         return page.PageCheck(observations="fake", reason="fake", kind=kind), 0.001
 
-    def fake_read(image_path, profile, model, max_calls=4):
+    def fake_read(image_path, profile, model, max_calls=4, min_confidence=0.8):
         calls.append(("read", model))
         rows = [e.name for e in entries]
         return page.PageRead(rows=rows, entries=list(entries)), 0.01
@@ -120,14 +120,16 @@ def test_cli_page_tier_best_uses_opus_and_saves_json(monkeypatch, tmp_path):
     assert "כהן משה" in path.read_text(encoding="utf-8")  # Hebrew is not escaped
 
 
-def test_debug_mode_prints_steps_and_gives_same_result(monkeypatch, capsys):
+def test_debug_mode_prints_steps_and_gives_same_result(monkeypatch, capsys, tmp_path):
     from phonebook.debug import run_graph
 
     fake_llm(monkeypatch, "entries", [entry("כהן משה", "050-1234567")])
-    out = run_graph(build_page_graph(), page_input(), {}, debug=True)
-    printed = capsys.readouterr().err
-    assert "STEP 1: classify_page" in printed and "STEP 3: finalize_page" in printed
-    assert "כהן משה" in printed  # Hebrew is readable
+    log = tmp_path / "debug.txt"
+    out = run_graph(build_page_graph(), page_input(), {}, debug=log)
+    tree = capsys.readouterr().out
+    assert "STEP classify_page" in tree and "STEP finalize_page" in tree
+    assert "contacts: 1 item(s)" in tree
+    assert "כהן משה" in log.read_text(encoding="utf-8")  # details in the file, Hebrew readable
     assert [c.name for c in out["contacts"]] == ["כהן משה"]
 
 

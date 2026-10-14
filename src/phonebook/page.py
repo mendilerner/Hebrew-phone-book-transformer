@@ -7,9 +7,9 @@ Later steps add: the retry loop, page_fix.
 from typing import Literal
 
 from langchain.agents import create_agent
-from langchain.agents.middleware import ToolCallLimitMiddleware
+from langchain.agents.middleware import ToolCallLimitMiddleware, after_model
 from langchain.agents.structured_output import ProviderStrategy
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
@@ -103,8 +103,14 @@ Tools: you can look at parts of the page again, in full resolution.
   (small or unclear letters and digits).
 - crop_region(x0, y0, x1, y1): any part of the page, for example a note in a margin.
 - ink_crosses_line(row) and check_phone(text) are free checks.
-You have at most {max_calls} tool calls for this page. First read the whole page,
-then spend the calls on the hardest rows. Then give your final answer.
+You have at most {max_calls} tool calls for this page.
+
+How to work:
+1. Look at the whole page and read every row.
+2. Before your final answer, check the hardest rows with the tools: rows where a
+   letter or digit is unclear. Use the calls on the rows you are least sure about.
+3. Then give your final answer, with what you learned from the tools.
+Answer without any tool call only when every entry is fully clear.
 
 Book layout:
 {profile}"""
@@ -127,8 +133,43 @@ ROWS_NOTE = {
 }
 
 
+def check_before_answer(min_confidence: float):
+    """Agent middleware: an after_model hook (runs after every model turn).
+
+    If the model gives its final answer without using any tool, while some entries
+    have a low confidence, we send it back once: "check these rows first".
+    jump_to="model" is how middleware changes the agent's flow.
+    """
+
+    @after_model(can_jump_to=["model"])
+    def check(state, runtime):
+        answer = state.get("structured_response")
+        last = state["messages"][-1]
+        used_tools = any(isinstance(m, ToolMessage) for m in state["messages"])
+        asked_before = sum(isinstance(m, HumanMessage) for m in state["messages"]) > 1
+        if answer is None or getattr(last, "tool_calls", None) or used_tools or asked_before:
+            return None
+        weak = [e for e in answer.entries if e.confidence < min_confidence]
+        if not weak:
+            return None
+        weak.sort(key=lambda e: e.confidence)
+        rows = ", ".join(str(e.rows[0]) for e in weak[:6] if e.rows)
+        note = (
+            f"Before the final answer, check the unclear rows with the tools "
+            f"(for example row_view(row, 'zoom')). Least sure rows: {rows}. "
+            "Then answer again."
+        )
+        return {"messages": [HumanMessage(note)], "jump_to": "model"}
+
+    return check
+
+
 def ask_read_page(
-    image_path: str, profile: LayoutProfile, model: str, max_calls: int = 4
+    image_path: str,
+    profile: LayoutProfile,
+    model: str,
+    max_calls: int = 4,
+    min_confidence: float = 0.8,
 ) -> tuple[PageRead, float]:
     """The read_page agent: the prebuilt create_agent (a model <-> tools loop graph).
 
@@ -149,7 +190,10 @@ def ask_read_page(
         tools=make_tools(img, rows),
         system_prompt=prompt,
         response_format=ProviderStrategy(PageRead),
-        middleware=[ToolCallLimitMiddleware(run_limit=max_calls)],
+        middleware=[
+            ToolCallLimitMiddleware(run_limit=max_calls),
+            check_before_answer(min_confidence),
+        ],
     )
     content = [to_block(page_image), {"type": "text", "text": "Read this page."}]
     result = agent.invoke({"messages": [HumanMessage(content=content)]})
@@ -176,7 +220,10 @@ def classify_page(state: PageState, config: RunnableConfig) -> dict:
 def read_page(state: PageState, config: RunnableConfig) -> dict:
     model = model_name("read_page", config)
     max_calls = setting(config, "agent_tool_calls")
-    page, cost = ask_read_page(state["image_path"], state["profile"], model, max_calls)
+    min_confidence = setting(config, "min_confidence")
+    page, cost = ask_read_page(
+        state["image_path"], state["profile"], model, max_calls, min_confidence
+    )
     draft = [_to_contact(entry, state["page_no"]) for entry in page.entries]
     if state["page_kind"] == "different_layout":
         for contact in draft:  # MVP has no rediscover_layout: read anyway, but let a human check

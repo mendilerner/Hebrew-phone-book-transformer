@@ -132,8 +132,10 @@ def test_debug_shows_the_agent_steps_inside_read_page(monkeypatch, tmp_path, cap
     monkeypatch.setattr(page, "chat_model", lambda name: fake)
 
     state = {"page_no": 1, "image_path": str(path), "profile": PROFILE, "max_attempts": 3}
-    run_graph(build_page_graph(), state, {}, debug=True)
-    assert "read_page > model returned" in capsys.readouterr().err
+    run_graph(build_page_graph(), state, {}, debug=tmp_path / "debug.txt")
+    tree = capsys.readouterr().out
+    assert "    read_page agent > model" in tree  # indented: a step inside read_page
+    assert "model gives its final answer" in tree
 
 
 def test_debug_hides_images_in_tool_messages():
@@ -143,3 +145,33 @@ def test_debug_hides_images_in_tool_messages():
 
     message = ToolMessage(content=[{"type": "image", "base64": "A" * 5000}], tool_call_id="t1")
     assert "AAAA" not in _json({"messages": [message]})
+
+
+def test_agent_is_sent_back_once_to_check_unclear_rows(monkeypatch, tmp_path):
+    path = tmp_path / "page.jpg"
+    drawn_page().save(path)
+
+    def answer(confidence):
+        entry = {"rows": [3], "name": "כהן", "phones": ["050-1234567"], "confidence": confidence}
+        return AIMessage(json.dumps({"rows": ["כהן"], "entries": [entry]}, ensure_ascii=False))
+
+    replies = [
+        answer(0.4),  # answers at once, unsure, no tools -> the middleware sends it back
+        AIMessage("", tool_calls=[{"name": "row_view", "args": {"row": 3}, "id": "t1"}]),
+        answer(0.9),
+    ]
+    seen = []
+
+    class Recorder(FakeToolModel):
+        def _generate(self, messages, *args, **kwargs):
+            seen.append(messages)
+            return super()._generate(messages, *args, **kwargs)
+
+    fake = Recorder(messages=iter(replies))
+    monkeypatch.setattr(page, "chat_model", lambda name: fake)
+
+    result, _ = page.ask_read_page(str(path), PROFILE, "anthropic:claude-haiku-5-5")
+
+    assert len(seen) == 3
+    assert "Least sure rows: 3" in seen[1][-1].content
+    assert result.entries[0].confidence == 0.9

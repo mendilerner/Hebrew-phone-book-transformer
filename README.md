@@ -33,8 +33,9 @@ uv run python -m phonebook.cli_page samples/page_05.jpg --tier best  # same page
 ```
 The page reader is an agent: it can zoom into hard rows (max 4 tool calls per page).
 
-Add `--debug` to see every message sent to the LLM, its answer, and every graph step
-(printed to stderr; save it with `2> debug.txt`).
+Add `--debug` to see the steps as a tree: each node of the graph, and indented under
+`read_page` the agent's steps (model, middleware, tools), with tokens and cost per LLM
+call. All details (full prompts and answers) go to `output/<page>.<tier>.debug.txt`.
 
 `--tier` is `cheap` (Haiku), `strong` (Sonnet) or `best` (Opus). `phonebook.cli` has it too.
 The result is saved to `output/page_05.best.json` (gitignored, it has real numbers).

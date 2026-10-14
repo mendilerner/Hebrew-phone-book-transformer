@@ -137,11 +137,14 @@ See [decision 0011](decisions/0011-simple-page-subgraph.md).
 - `src/phonebook/book_graph.py`: `build_book_graph()` (layout part so far).
 - `src/phonebook/cli.py`: run the graph in the terminal and answer the interrupt.
 - `src/phonebook/page.py`: `classify_page` (LLM router), `read_page` (agent:
-  `create_agent` + `ToolCallLimitMiddleware`, setting `agent_tool_calls` = 4), `finalize_page` (rule checks; good → `contacts`, doubtful → `review_queue`).
+  `create_agent` + `ToolCallLimitMiddleware` (setting `agent_tool_calls` = 4) +
+  `check_before_answer` middleware), `finalize_page` (rule checks; good → `contacts`, doubtful → `review_queue`).
 - `src/phonebook/page_graph.py`: `build_page_graph()`.
-- `src/phonebook/debug.py`: `--debug` mode: a callback handler prints every LLM message
-  (images shortened), and `graph.stream(stream_mode="updates", subgraphs=True)` prints every
-  node's update, also the agent's steps inside `read_page`.
+- `src/phonebook/debug.py`: `--debug` mode. The terminal shows a step tree:
+  `graph.stream(stream_mode="tasks", subgraphs=True)` gives each node start and end,
+  also the agent's steps inside `read_page` (indented). A callback handler adds one
+  line per LLM call. All details (full prompts, answers, node results, the graph as
+  Mermaid) go to a UTF-8 file in `output/`.
 - `src/phonebook/cli_page.py`: read one page with the saved layout; `--tier` picks the
   model; saves the full result to `output/<page>.<tier>.json` (gitignored).
 - `src/phonebook/export.py`: `export_excel` (phones as text) and `export_vcf`

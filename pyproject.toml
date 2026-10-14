@@ -1,0 +1,27 @@
+[project]
+name = "phonebook"
+version = "0.1.0"
+description = "LangGraph pipeline: handwritten Hebrew phone book photos -> Excel + .vcf"
+requires-python = ">=3.11"
+dependencies = [
+    "langgraph>=1.0",
+    "langchain>=1.0",
+    "langchain-anthropic>=1.0",
+    "pydantic>=2.7",
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/phonebook"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.pytest.ini_options]
+filterwarnings = ["ignore::langchain_core._api.beta_decorator.LangChainBetaWarning"]

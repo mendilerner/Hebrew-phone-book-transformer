@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **design phase** (no code yet). Last update: 2026-10-12.
+Status: **building the MVP** (step 1: project setup done). Last update: 2026-10-12.
 
 ## Goal
 
@@ -97,6 +97,14 @@ structured output.
 See [decision 0009](decisions/0009-mvp-scope.md). Everything above is in the MVP
 except `rediscover_layout`, `find_duplicates`, the `Store` (the profile stays in
 the state), and the Batch API.
+
+## Code layout
+
+- `src/phonebook/settings.py`: defaults (model ladder, tier per node, budget, cache path).
+  Any value can be changed per run with `config["configurable"]`.
+- `src/phonebook/llm.py`: `get_model(node, config, tier)` picks the model for a node.
+- `src/phonebook/cost.py`: `cost_usd(answer, model)` from token usage; cached answers cost 0.
+- `src/phonebook/llm_cache.py`: dev-mode disk cache for LLM answers.
 
 ## Not decided yet
 

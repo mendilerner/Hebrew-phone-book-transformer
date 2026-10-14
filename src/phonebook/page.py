@@ -65,12 +65,29 @@ Book layout:
 
 READ_PROMPT = """You read one page of a handwritten Hebrew phone book.
 The book layout is described below. Read the WHOLE page, top to bottom.
+
+The writing is by hand: often fast, messy, slanted or faded, by more than one person.
+Many Hebrew letters look alike in handwriting, so look at each letter with care:
+ר/ד/ך, ב/כ/פ, ה/ח/ת, ו/ז/ן/י, ס/ם/ט, ע/צ/ש, ג/נ, ק/ה, final letters (ך ם ן ף ץ).
+Digits that look alike: 1/7, 4/9, 3/8, 5/6, 0/6.
+
+Steps:
 1. First write the text of every row (the skeleton), so nothing is skipped.
 2. Then turn the rows into entries. One entry can use 2 rows (for example a name
    on one row and its phone on the next). Ink can cross the row lines.
-3. Copy phone numbers exactly as written. Never add an area code.
-4. Put columns that are not name/phone/address/notes into extra.
-5. Write every doubt, and give a low confidence when you guess.
+3. Names, cities and streets: read the letter shapes first. Then use what you know
+   about common Hebrew names. If the shapes fit a common name (for example a common
+   family name like לרנר) better than a rare word (like לבקר), choose the common one.
+   Use this only to choose between readings that the ink allows. Never change a
+   name to one the ink does not show.
+4. If you still can't decide, do not guess: write your best reading, put every
+   possible reading in doubts (for example "לרנר or לבקר?"), and give a low
+   confidence. Write ? for a letter you can't read at all.
+5. Phone numbers: copy them exactly as written, digit by digit. General knowledge
+   does not help here. Never add an area code. Write ? for an unclear digit and
+   add a doubt (for example "digit 4 or 9?").
+6. Put columns that are not name/phone/address/notes into extra.
+7. confidence: about 0.9 or more only when every letter and digit is clear.
 
 Book layout:
 {profile}"""

@@ -108,6 +108,10 @@ the state), and the Batch API.
 
 See [decision 0011](decisions/0011-simple-page-subgraph.md).
 - The LLM copies phones as raw text; Python (`parse_phone`) decides digits and kind.
+- Handwriting: the prompt lists Hebrew letters (and digits) that look alike. For names
+  the LLM may use its knowledge of common Hebrew names, but only to choose between
+  readings the ink allows. If it can't decide, it lists the readings in `doubts`, gives
+  a low confidence (so the entry goes to review), and writes `?` for an unreadable letter.
 - An entry goes to `review_queue` if it has any issue (LLM doubt or rule check)
   or `confidence < min_confidence` (setting, default 0.8). Otherwise to `contacts`.
 - `different_layout` pages: read with the book layout, every entry goes to review

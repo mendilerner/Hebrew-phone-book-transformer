@@ -28,7 +28,8 @@ def _json(value: Any) -> str:
             return obj.model_dump(mode="json")
         return repr(obj)
 
-    return json.dumps(value, ensure_ascii=False, indent=2, default=default)
+    plain = json.loads(json.dumps(value, default=default))  # objects -> dicts and lists
+    return json.dumps(_hide_images(plain), ensure_ascii=False, indent=2)
 
 
 def _hide_images(value: Any) -> Any:
@@ -81,9 +82,14 @@ def run_graph(graph, graph_input, config: dict, debug: bool) -> dict:
     config = {**config, "callbacks": [*config.get("callbacks", []), LLMPrinter()]}
     state: dict = {}
     step = 0
-    for mode, chunk in graph.stream(graph_input, config, stream_mode=["updates", "values"]):
+    # subgraphs=True: also show the steps of graphs that run inside a node
+    # (the read_page agent is a graph too). `namespace` says which graph it is.
+    stream = graph.stream(graph_input, config, stream_mode=["updates", "values"], subgraphs=True)
+    for namespace, mode, chunk in stream:
+        inside = " > ".join(n.split(":")[0] for n in namespace)
         if mode == "values":
-            state = chunk  # the full state after this step
+            if not namespace:
+                state = chunk  # the full state of the main graph after this step
             continue
         for node, update in chunk.items():  # mode == "updates": what each node returned
             if node == "__interrupt__":
@@ -92,5 +98,6 @@ def run_graph(graph, graph_input, config: dict, debug: bool) -> dict:
                 state = {**state, "__interrupt__": update}
                 continue
             step += 1
-            _out(f"\n{LINE}\nSTEP {step}: {node} returned\n{LINE}\n{_json(update)}")
+            where = f"{inside} > {node}" if inside else node
+            _out(f"\n{LINE}\nSTEP {step}: {where} returned\n{LINE}\n{_json(update)}")
     return state

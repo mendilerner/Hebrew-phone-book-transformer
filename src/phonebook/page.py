@@ -1,18 +1,26 @@
-"""Page sub-graph nodes (build step 4: the simple version).
+"""Page sub-graph nodes.
 
-classify_page (L) -> read_page -> finalize_page
-Later steps add: agent tools in read_page, the retry loop, page_fix.
+classify_page (L) -> read_page (A: an agent with tools) -> finalize_page
+Later steps add: the retry loop, page_fix.
 """
 
 from typing import Literal
 
+from langchain.agents import create_agent
+from langchain.agents.middleware import ToolCallLimitMiddleware
+from langchain.agents.structured_output import ProviderStrategy
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
-from phonebook.llm import ask_structured, model_name, setting
+from phonebook.cost import cost_usd
+from phonebook.images import load_page, to_block
+from phonebook.llm import ask_structured, chat_model, model_name, setting
 from phonebook.phones import parse_phone
+from phonebook.rows import find_row_lines, with_row_numbers
 from phonebook.rules import check_contact
 from phonebook.schema import Contact, Decision, LayoutProfile, PageState
+from phonebook.tools import make_tools
 
 # ---------------------------------------------------------------------------
 # What the LLM returns. Rule: observations first, decision last (decision 0010).
@@ -89,6 +97,15 @@ Steps:
 6. Put columns that are not name/phone/address/notes into extra.
 7. confidence: about 0.9 or more only when every letter and digit is clear.
 
+Tools: you can look at parts of the page again, in full resolution.
+{rows_note}
+- row_view(row, mode): strip / window3 (when ink crosses the row lines) / zoom
+  (small or unclear letters and digits).
+- crop_region(x0, y0, x1, y1): any part of the page, for example a note in a margin.
+- ink_crosses_line(row) and check_phone(text) are free checks.
+You have at most {max_calls} tool calls for this page. First read the whole page,
+then spend the calls on the hardest rows. Then give your final answer.
+
 Book layout:
 {profile}"""
 
@@ -102,9 +119,43 @@ def ask_page_kind(image_path: str, profile: LayoutProfile, model: str) -> tuple[
     return ask_structured(PageCheck, prompt, [image_path], "What kind of page is this?", model)
 
 
-def ask_read_page(image_path: str, profile: LayoutProfile, model: str) -> tuple[PageRead, float]:
-    prompt = READ_PROMPT.format(profile=_profile_text(profile))
-    return ask_structured(PageRead, prompt, [image_path], "Read this page.", model)
+ROWS_NOTE = {
+    True: "The red numbers in the white strip on the left are the row numbers. Use them\n"
+    "in `rows` in your answer and in the tools.",
+    False: "No printed row lines were found: count the rows yourself from the top, and\n"
+    "use crop_region (row_view will not work).",
+}
+
+
+def ask_read_page(
+    image_path: str, profile: LayoutProfile, model: str, max_calls: int = 4
+) -> tuple[PageRead, float]:
+    """The read_page agent: the prebuilt create_agent (a model <-> tools loop graph).
+
+    ToolCallLimitMiddleware stops the tools after `max_calls` calls, so the model
+    must answer with what it has (decision 0008). ProviderStrategy gets the final
+    answer as structured output with the provider's own JSON mode (decision 0010).
+    """
+    img = load_page(image_path)
+    rows = find_row_lines(img)
+    page_image = with_row_numbers(img, rows) if rows.row_count else img
+    prompt = READ_PROMPT.format(
+        profile=_profile_text(profile),
+        rows_note=ROWS_NOTE[bool(rows.row_count)],
+        max_calls=max_calls,
+    )
+    agent = create_agent(
+        chat_model(model),
+        tools=make_tools(img, rows),
+        system_prompt=prompt,
+        response_format=ProviderStrategy(PageRead),
+        middleware=[ToolCallLimitMiddleware(run_limit=max_calls)],
+    )
+    content = [to_block(page_image), {"type": "text", "text": "Read this page."}]
+    result = agent.invoke({"messages": [HumanMessage(content=content)]})
+    # Every model turn of the agent costs money: add them all up.
+    cost = sum(cost_usd(m, model) for m in result["messages"] if isinstance(m, AIMessage))
+    return result["structured_response"], cost
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +175,8 @@ def classify_page(state: PageState, config: RunnableConfig) -> dict:
 
 def read_page(state: PageState, config: RunnableConfig) -> dict:
     model = model_name("read_page", config)
-    page, cost = ask_read_page(state["image_path"], state["profile"], model)
+    max_calls = setting(config, "agent_tool_calls")
+    page, cost = ask_read_page(state["image_path"], state["profile"], model, max_calls)
     draft = [_to_contact(entry, state["page_no"]) for entry in page.entries]
     if state["page_kind"] == "different_layout":
         for contact in draft:  # MVP has no rediscover_layout: read anyway, but let a human check

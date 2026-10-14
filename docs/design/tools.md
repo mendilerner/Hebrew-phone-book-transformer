@@ -12,18 +12,20 @@ Three kinds of "tools". Only the first kind is a real LLM tool.
 
 | Tool | Input | Returns | Why |
 |---|---|---|---|
-| `row_view` | `row`, `mode`: `strip` / `window3` / `zoom` | image | the row views from [0003](../decisions/0003-flexible-row-reading.md) |
+| `row_view` | `row`, `mode`: `strip` / `window3` / `zoom` | image(s) | the row views from [0003](../decisions/0003-flexible-row-reading.md); zoom = right half + left half |
 | `crop_region` | box `x0, y0, x1, y1` (0..1 of the page), `pad` | image | free look at any part (a note, a crossed digit) |
 | `ink_crosses_line` | `row` | `{above: bool, below: bool}` | tells the agent which view to pick; OpenCV, no LLM |
 | `check_phone` | `text` | `Phone` (digits, kind) or error | the agent checks a number it read; same code as `parse_phone` |
 
 - Image tools return an **image** in the tool message, so the model sees it.
+- The page the agent sees first has the row numbers drawn in a white strip on the
+  left, so its row numbers and ours are the same ([0013](../decisions/0013-agent-tools-first.md)).
 - Image tools only cut the page file on disk; the state keeps only paths.
 - The agent is the **prebuilt** `create_agent` (LangChain 1.x), with
   `ToolCallLimitMiddleware(run_limit=4)` (default `exit_behavior="continue"`: after
   4 calls tools are blocked, and the model must answer with what it has).
   Inside, it is the same 2-node graph (`model` ⇄ `tools`).
-  `response_format` can return the draft `Contact` list as structured output.
+  `response_format=ProviderStrategy(PageRead)` returns the page read as structured output.
 
 ## 2. Python helpers (no LLM, free)
 

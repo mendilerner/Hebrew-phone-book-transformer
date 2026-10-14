@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **building the MVP** (steps 1-4 done: setup, free helpers, layout discovery, simple page sub-graph). Last update: 2026-10-12.
+Status: **building the MVP** (steps 1-4 and 6 done: setup, free helpers, layout discovery, page sub-graph, agent tools; step 6 was moved before 5, [decision 0013](decisions/0013-agent-tools-first.md)). Last update: 2026-10-14.
 
 ## Goal
 
@@ -127,16 +127,21 @@ See [decision 0011](decisions/0011-simple-page-subgraph.md).
 - `src/phonebook/schema.py`: data models and graph states (moved from `docs/design/`).
 - `src/phonebook/phones.py`: `parse_phone(raw)` → `Phone` (Israeli number rules).
 - `src/phonebook/rules.py`: `check_contact`, `letter_order_issues` (free checks).
-- `src/phonebook/images.py`: `list_pages`, `image_block` (upright, max 1568 px, JPEG).
+- `src/phonebook/images.py`: `list_pages`, `load_page`, `image_block` (upright, max 2576 px,
+  JPEG), `crop_block` (a part of the page in full resolution).
+- `src/phonebook/rows.py`: `find_row_lines` (OpenCV), `ink_crosses_line`,
+  `with_row_numbers` (row numbers in a white strip next to the page).
+- `src/phonebook/tools.py`: `make_tools(img, rows)`: the 4 agent tools for one page.
 - `src/phonebook/layout.py`: `load_book`, `discover_layout`, `add_sample_page`,
   `confirm_layout` (interrupt) and the router `route_after_discover`.
 - `src/phonebook/book_graph.py`: `build_book_graph()` (layout part so far).
 - `src/phonebook/cli.py`: run the graph in the terminal and answer the interrupt.
-- `src/phonebook/page.py`: `classify_page` (LLM router), `read_page` (one LLM call for
-  now), `finalize_page` (rule checks; good → `contacts`, doubtful → `review_queue`).
+- `src/phonebook/page.py`: `classify_page` (LLM router), `read_page` (agent:
+  `create_agent` + `ToolCallLimitMiddleware`, setting `agent_tool_calls` = 4), `finalize_page` (rule checks; good → `contacts`, doubtful → `review_queue`).
 - `src/phonebook/page_graph.py`: `build_page_graph()`.
 - `src/phonebook/debug.py`: `--debug` mode: a callback handler prints every LLM message
-  (images shortened), and `graph.stream(stream_mode="updates")` prints every node's update.
+  (images shortened), and `graph.stream(stream_mode="updates", subgraphs=True)` prints every
+  node's update, also the agent's steps inside `read_page`.
 - `src/phonebook/cli_page.py`: read one page with the saved layout; `--tier` picks the
   model; saves the full result to `output/<page>.<tier>.json` (gitignored).
 - `src/phonebook/export.py`: `export_excel` (phones as text) and `export_vcf`

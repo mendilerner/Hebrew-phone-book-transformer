@@ -34,7 +34,7 @@ def fake_llm(monkeypatch, kind, entries=()):
         calls.append(("classify", model))
         return page.PageCheck(observations="fake", reason="fake", kind=kind), 0.001
 
-    def fake_read(image_path, profile, model):
+    def fake_read(image_path, profile, model, max_calls=4):
         calls.append(("read", model))
         rows = [e.name for e in entries]
         return page.PageRead(rows=rows, entries=list(entries)), 0.01

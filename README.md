@@ -31,6 +31,8 @@ It calls the API once (my estimate: about $0.01-0.05); running it again on the s
 uv run python -m phonebook.cli_page samples/page_05.jpg              # read one page (Haiku)
 uv run python -m phonebook.cli_page samples/page_05.jpg --tier best  # same page with Opus
 ```
+The page reader is an agent: it can zoom into hard rows (max 4 tool calls per page).
+
 Add `--debug` to see every message sent to the LLM, its answer, and every graph step
 (printed to stderr; save it with `2> debug.txt`).
 

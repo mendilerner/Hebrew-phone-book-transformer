@@ -135,6 +135,8 @@ See [decision 0011](decisions/0011-simple-page-subgraph.md).
 - `src/phonebook/page.py`: `classify_page` (LLM router), `read_page` (one LLM call for
   now), `finalize_page` (rule checks; good → `contacts`, doubtful → `review_queue`).
 - `src/phonebook/page_graph.py`: `build_page_graph()`.
+- `src/phonebook/debug.py`: `--debug` mode: a callback handler prints every LLM message
+  (images shortened), and `graph.stream(stream_mode="updates")` prints every node's update.
 - `src/phonebook/cli_page.py`: read one page with the saved layout; `--tier` picks the
   model; saves the full result to `output/<page>.<tier>.json` (gitignored).
 - `src/phonebook/export.py`: `export_excel` (phones as text) and `export_vcf`

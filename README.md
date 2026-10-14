@@ -31,6 +31,9 @@ It calls the API once (my estimate: about $0.01-0.05); running it again on the s
 uv run python -m phonebook.cli_page samples/page_05.jpg              # read one page (Haiku)
 uv run python -m phonebook.cli_page samples/page_05.jpg --tier best  # same page with Opus
 ```
+Add `--debug` to see every message sent to the LLM, its answer, and every graph step
+(printed to stderr; save it with `2> debug.txt`).
+
 `--tier` is `cheap` (Haiku), `strong` (Sonnet) or `best` (Opus). `phonebook.cli` has it too.
 The result is saved to `output/page_05.best.json` (gitignored, it has real numbers).
 Run layout discovery first: it saves the layout to `.cache/profile.json`.

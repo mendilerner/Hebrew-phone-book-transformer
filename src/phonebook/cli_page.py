@@ -3,6 +3,7 @@
 uv run python -m phonebook.cli samples/                           # first: find the layout
 uv run python -m phonebook.cli_page samples/p05.jpg               # then: read one page
 uv run python -m phonebook.cli_page samples/p05.jpg --tier best   # same page with Opus
+uv run python -m phonebook.cli_page samples/p05.jpg --debug       # show LLM messages and steps
 
 The full result is saved as JSON in output/ (gitignored: it has real numbers).
 """
@@ -12,6 +13,7 @@ import json
 from pathlib import Path
 
 from phonebook.cli import PROFILE_FILE
+from phonebook.debug import run_graph
 from phonebook.llm import enable_disk_cache, model_name, setting
 from phonebook.page_graph import build_page_graph
 from phonebook.schema import LayoutProfile
@@ -20,11 +22,12 @@ LLM_NODES = ("classify_page", "read_page")
 OUTPUT_DIR = Path("output")
 
 
-def run_page(image_path: str, tier: str | None = None) -> dict:
+def run_page(image_path: str, tier: str | None = None, debug: bool = False) -> dict:
     """Run the page graph. `tier` (cheap/strong/best) sets the model for every LLM node."""
     config = {"configurable": {"tiers": {node: tier for node in LLM_NODES}}} if tier else {}
     profile = LayoutProfile.model_validate_json(PROFILE_FILE.read_text(encoding="utf-8"))
-    out = build_page_graph().invoke(
+    out = run_graph(
+        build_page_graph(),
         {
             "page_no": 1,
             "image_path": image_path,
@@ -32,6 +35,7 @@ def run_page(image_path: str, tier: str | None = None) -> dict:
             "max_attempts": setting(config, "max_attempts"),
         },
         config,
+        debug,
     )
     return {
         "image": image_path,
@@ -61,10 +65,11 @@ def main() -> None:
         choices=sorted(setting(None, "models")),
         help="model for all LLM nodes: cheap=Haiku, strong=Sonnet, best=Opus",
     )
+    parser.add_argument("--debug", action="store_true", help="print LLM messages and graph steps")
     args = parser.parse_args()
 
     enable_disk_cache()  # same page + same model + same prompt -> saved answer, $0
-    result = run_page(args.image, args.tier)
+    result = run_page(args.image, args.tier, args.debug)
     for title, key in (("Good", "contacts"), ("To review", "review_queue")):
         print(f"\n{title}:")
         for c in result[key]:

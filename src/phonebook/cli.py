@@ -2,6 +2,7 @@
 
 uv run python -m phonebook.cli samples/              # real LLM calls (needs ANTHROPIC_API_KEY)
 uv run python -m phonebook.cli samples/ --tier best  # find the layout with Opus
+uv run python -m phonebook.cli samples/ --debug      # show LLM messages and graph steps
 """
 
 import argparse
@@ -12,19 +13,20 @@ from pathlib import Path
 from langgraph.types import Command
 
 from phonebook.book_graph import build_book_graph
+from phonebook.debug import run_graph
 from phonebook.llm import enable_disk_cache
 
 PROFILE_FILE = Path(".cache/profile.json")
 
 
-def main(folder: str, tier: str | None = None) -> None:
+def main(folder: str, tier: str | None = None, debug: bool = False) -> None:
     enable_disk_cache()  # same pages again -> saved answer, $0
     graph = build_book_graph()
     config = {"configurable": {"thread_id": str(uuid.uuid4())}}
     if tier:
         config["configurable"]["tiers"] = {"discover_layout": tier}
 
-    result = graph.invoke({"book_id": folder}, config)
+    result = run_graph(graph, {"book_id": folder}, config, debug)
     while "__interrupt__" in result:  # the graph paused and waits for us
         question = result["__interrupt__"][0].value
         print(json.dumps(question, ensure_ascii=False, indent=2))
@@ -34,7 +36,7 @@ def main(folder: str, tier: str | None = None) -> None:
             path = input("Path to an edited profile JSON file: ").strip()
             with open(path, encoding="utf-8") as f:
                 answer = {"profile": json.load(f)}
-        result = graph.invoke(Command(resume=answer), config)
+        result = run_graph(graph, Command(resume=answer), config, debug)
 
     PROFILE_FILE.parent.mkdir(exist_ok=True)
     PROFILE_FILE.write_text(result["profile"].model_dump_json(indent=2), encoding="utf-8")
@@ -51,5 +53,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--tier", choices=["cheap", "strong", "best"], help="model for discover_layout"
     )
+    parser.add_argument("--debug", action="store_true", help="print LLM messages and graph steps")
     args = parser.parse_args()
-    main(args.folder, args.tier)
+    main(args.folder, args.tier, args.debug)

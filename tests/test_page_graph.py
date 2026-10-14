@@ -118,3 +118,24 @@ def test_cli_page_tier_best_uses_opus_and_saves_json(monkeypatch, tmp_path):
     assert saved["models"]["read_page"] == "anthropic:claude-opus-5-5"
     assert saved["contacts"][0]["name"] == "כהן משה"
     assert "כהן משה" in path.read_text(encoding="utf-8")  # Hebrew is not escaped
+
+
+def test_debug_mode_prints_steps_and_gives_same_result(monkeypatch, capsys):
+    from phonebook.debug import run_graph
+
+    fake_llm(monkeypatch, "entries", [entry("כהן משה", "050-1234567")])
+    out = run_graph(build_page_graph(), page_input(), {}, debug=True)
+    printed = capsys.readouterr().err
+    assert "STEP 1: classify_page" in printed and "STEP 3: finalize_page" in printed
+    assert "כהן משה" in printed  # Hebrew is readable
+    assert [c.name for c in out["contacts"]] == ["כהן משה"]
+
+
+def test_debug_hides_image_data():
+    from langchain_core.messages import HumanMessage
+
+    from phonebook.debug import format_message
+
+    message = HumanMessage(content=[{"type": "image", "base64": "A" * 5000}, "Read this page."])
+    text = format_message(message)
+    assert "<image data, 5000 chars>" in text and "AAAA" not in text

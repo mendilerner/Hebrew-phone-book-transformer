@@ -25,4 +25,11 @@ uv run python -m phonebook.cli samples/   # reads 2-4 pages, shows the layout, a
 ```
 It calls the API once (my estimate: about $0.01-0.05); running it again on the same pages is free (disk cache).
 
+## Try one page
+
+```bash
+uv run python -m phonebook.cli_page samples/page_05.jpg   # read one page with the saved layout
+```
+Run layout discovery first: it saves the layout to `.cache/profile.json`.
+
 Phone book photos are private: keep them in `samples/` (ignored by git).

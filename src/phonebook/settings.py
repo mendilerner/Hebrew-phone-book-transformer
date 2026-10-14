@@ -29,6 +29,7 @@ class Settings(BaseModel):
     )
     budget_usd: float = 10.0  # max $ per book (decision 0007)
     max_attempts: int = 3  # retries per row
+    min_confidence: float = 0.8  # below this, an entry goes to the review queue
     cache_path: str = ".cache/llm.sqlite"  # dev mode: saved LLM answers
 
 

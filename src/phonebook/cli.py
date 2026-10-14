@@ -6,11 +6,14 @@ uv run python -m phonebook.cli samples/          # real LLM calls (needs ANTHROP
 import json
 import sys
 import uuid
+from pathlib import Path
 
 from langgraph.types import Command
 
 from phonebook.book_graph import build_book_graph
 from phonebook.llm import enable_disk_cache
+
+PROFILE_FILE = Path(".cache/profile.json")
 
 
 def main(folder: str) -> None:
@@ -30,7 +33,10 @@ def main(folder: str) -> None:
                 answer = {"profile": json.load(f)}
         result = graph.invoke(Command(resume=answer), config)
 
-    print(f"\nCost: ${result.get('cost_usd', 0):.4f}")
+    PROFILE_FILE.parent.mkdir(exist_ok=True)
+    PROFILE_FILE.write_text(result["profile"].model_dump_json(indent=2), encoding="utf-8")
+    print(f"\nSaved the layout to {PROFILE_FILE} (cli_page uses it).")
+    print(f"Cost: ${result.get('cost_usd', 0):.4f}")
     for d in result["decisions"]:
         print(f"- {d.node}: {d.choice} ({d.reason})")
 

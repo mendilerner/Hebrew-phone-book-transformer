@@ -9,7 +9,7 @@ Build order (decision 0009):
 1. ✓ Project setup
 2. ✓ Free helpers (phones, rule checks, export)
 3. ✓ `discover_layout` + `confirm_layout`
-4. ○ Simple page sub-graph
+4. ✓ Simple page sub-graph
 5. ○ Book graph: `Send` + reducers
 6. ○ Agent tools + 4-call limit
 7. ○ Retry loop: grade → `choose_fix` → `reread_row`, model ladder, budget

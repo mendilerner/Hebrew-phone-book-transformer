@@ -61,7 +61,7 @@ flowchart TD
 | Node | Does | LangGraph concept |
 |---|---|---|
 | `classify_page` | entries / empty / cover / different layout | LLM router |
-| `rediscover_layout` | layout for this page only | reuses the discovery prompt |
+| `rediscover_layout` | layout for this page only (**later**; MVP goes to `read_page` and sends the entries to review, decision 0011) | reuses the discovery prompt |
 | `read_page` | agent reads the whole page in one call, uses tools (small crops) only when unsure | ReAct agent (its own small sub-graph) |
 | `grade_entries` | Python rules first; LLM check only if rules can't decide. Sets `confidence` and `issues` | conditional edge on scores, tries and budget |
 | `choose_fix` | picks a fix from the grader's reason (zoom, 3-row window, stronger model) | LLM router + nested `Send` |

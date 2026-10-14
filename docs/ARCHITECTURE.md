@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **building the MVP** (steps 1-3 done: setup, free helpers, layout discovery). Last update: 2026-10-12.
+Status: **building the MVP** (steps 1-4 done: setup, free helpers, layout discovery, simple page sub-graph). Last update: 2026-10-12.
 
 ## Goal
 
@@ -100,6 +100,15 @@ See [decision 0009](decisions/0009-mvp-scope.md). Everything above is in the MVP
 except `rediscover_layout`, `find_duplicates`, the `Store` (the profile stays in
 the state), and the Batch API.
 
+## Page reading rules (MVP)
+
+See [decision 0011](decisions/0011-simple-page-subgraph.md).
+- The LLM copies phones as raw text; Python (`parse_phone`) decides digits and kind.
+- An entry goes to `review_queue` if it has any issue (LLM doubt or rule check)
+  or `confidence < min_confidence` (setting, default 0.8). Otherwise to `contacts`.
+- `different_layout` pages: read with the book layout, every entry goes to review
+  (no `rediscover_layout` in the MVP).
+
 ## Code layout
 
 - `src/phonebook/settings.py`: defaults (model ladder, tier per node, budget, cache path).
@@ -115,6 +124,10 @@ the state), and the Batch API.
   `confirm_layout` (interrupt) and the router `route_after_discover`.
 - `src/phonebook/book_graph.py`: `build_book_graph()` (layout part so far).
 - `src/phonebook/cli.py`: run the graph in the terminal and answer the interrupt.
+- `src/phonebook/page.py`: `classify_page` (LLM router), `read_page` (one LLM call for
+  now), `finalize_page` (rule checks; good → `contacts`, doubtful → `review_queue`).
+- `src/phonebook/page_graph.py`: `build_page_graph()`.
+- `src/phonebook/cli_page.py`: read one page with the saved layout.
 - `src/phonebook/export.py`: `export_excel` (phones as text) and `export_vcf`
   (only contacts with a mobile number).
 

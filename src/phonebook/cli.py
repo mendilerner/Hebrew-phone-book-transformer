@@ -1,10 +1,11 @@
 """Run the book graph from the terminal.
 
-uv run python -m phonebook.cli samples/          # real LLM calls (needs ANTHROPIC_API_KEY)
+uv run python -m phonebook.cli samples/              # real LLM calls (needs ANTHROPIC_API_KEY)
+uv run python -m phonebook.cli samples/ --tier best  # find the layout with Opus
 """
 
+import argparse
 import json
-import sys
 import uuid
 from pathlib import Path
 
@@ -16,10 +17,12 @@ from phonebook.llm import enable_disk_cache
 PROFILE_FILE = Path(".cache/profile.json")
 
 
-def main(folder: str) -> None:
+def main(folder: str, tier: str | None = None) -> None:
     enable_disk_cache()  # same pages again -> saved answer, $0
     graph = build_book_graph()
     config = {"configurable": {"thread_id": str(uuid.uuid4())}}
+    if tier:
+        config["configurable"]["tiers"] = {"discover_layout": tier}
 
     result = graph.invoke({"book_id": folder}, config)
     while "__interrupt__" in result:  # the graph paused and waits for us
@@ -38,8 +41,15 @@ def main(folder: str) -> None:
     print(f"\nSaved the layout to {PROFILE_FILE} (cli_page uses it).")
     print(f"Cost: ${result.get('cost_usd', 0):.4f}")
     for d in result["decisions"]:
-        print(f"- {d.node}: {d.choice} ({d.reason})")
+        model = f" [{d.model}, ${d.cost_usd:.4f}]" if d.model else ""
+        print(f"- {d.node}: {d.choice} ({d.reason}){model}")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "samples")
+    parser = argparse.ArgumentParser(description="Find and confirm the layout of a phone book.")
+    parser.add_argument("folder", nargs="?", default="samples")
+    parser.add_argument(
+        "--tier", choices=["cheap", "strong", "best"], help="model for discover_layout"
+    )
+    args = parser.parse_args()
+    main(args.folder, args.tier)

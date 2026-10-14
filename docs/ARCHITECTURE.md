@@ -61,6 +61,8 @@ or zoom. See [decision 0003](decisions/0003-flexible-row-reading.md).
 Code: [`src/phonebook/schema.py`](../src/phonebook/schema.py) (was the draft `docs/design/state_schema.py`).
 
 - Pydantic models for data: `LayoutProfile`, `Contact`, `Phone`, `Decision`.
+  A `Decision` from an LLM node also keeps its `model` and `cost_usd`
+  ([decision 0012](decisions/0012-model-choice-per-run.md)).
 - TypedDict for graph state: `BookState` (parent), `PageState` (sub-graph).
 - `contacts`, `review_queue`, `decisions` use the `add` reducer, so parallel
   pages append results. Same key names in both states → passed up automatically;
@@ -78,6 +80,8 @@ See [decision 0007](decisions/0007-cost-control.md). In short:
 - One LLM read per page; only flagged rows are read again.
 - Free Python checks before any LLM grader.
 - Models come from config (`config["configurable"]`): cheap first, strong only as a fix.
+  Tiers: `cheap` = Haiku, `strong` = Sonnet, `best` = Opus (only when a run asks for it;
+  the CLIs have `--tier`).
 - `read_page` agent: max 4 tool calls, small crops, cached prompt + profile.
 - Budget: default **$10 per book**, split into a share per page. Over budget → review queue.
 - Development: LLM answer cache on disk, 3-page test set, Batch API for full runs.
@@ -127,7 +131,8 @@ See [decision 0011](decisions/0011-simple-page-subgraph.md).
 - `src/phonebook/page.py`: `classify_page` (LLM router), `read_page` (one LLM call for
   now), `finalize_page` (rule checks; good → `contacts`, doubtful → `review_queue`).
 - `src/phonebook/page_graph.py`: `build_page_graph()`.
-- `src/phonebook/cli_page.py`: read one page with the saved layout.
+- `src/phonebook/cli_page.py`: read one page with the saved layout; `--tier` picks the
+  model; saves the full result to `output/<page>.<tier>.json` (gitignored).
 - `src/phonebook/export.py`: `export_excel` (phones as text) and `export_vcf`
   (only contacts with a mobile number).
 

@@ -14,6 +14,7 @@ class Settings(BaseModel):
         default_factory=lambda: {
             "cheap": "anthropic:claude-haiku-5-5",
             "strong": "anthropic:claude-sonnet-5-5",
+            "best": "anthropic:claude-opus-5-5",  # not used by default; pick it per run
         }
     )
     # Which ladder step each LLM node starts on. choose_fix can move a row to "strong".

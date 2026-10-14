@@ -74,6 +74,8 @@ def discover_layout(state: BookState, config: RunnableConfig) -> dict:
                 node="discover_layout",
                 choice="clear" if guess.clear else "unclear",
                 reason=f"pages {state['sample_pages']}: {guess.reason}",
+                model=model,
+                cost_usd=cost,
             )
         ],
     }

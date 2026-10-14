@@ -87,3 +87,34 @@ def test_model_comes_from_config(monkeypatch):
     config = {"configurable": {"tiers": {"read_page": "strong"}}}
     build_page_graph().invoke(page_input(), config)
     assert calls[1] == ("read", "anthropic:claude-sonnet-5-5")
+
+
+def test_decisions_record_model_and_cost(monkeypatch):
+    fake_llm(monkeypatch, "entries", [entry("כהן", "050-1234567")])
+    out = build_page_graph().invoke(page_input())
+    by_node = {d.node: d for d in out["decisions"]}
+    assert by_node["read_page"].model == "anthropic:claude-haiku-5-5"
+    assert by_node["read_page"].cost_usd == pytest.approx(0.01)
+    assert by_node["finalize_page"].model is None  # a rule, not an LLM
+
+
+def test_cli_page_tier_best_uses_opus_and_saves_json(monkeypatch, tmp_path):
+    import json
+
+    from phonebook import cli_page
+
+    calls = fake_llm(monkeypatch, "entries", [entry("כהן משה", "050-1234567")])
+    profile_file = tmp_path / "profile.json"
+    profile_file.write_text(PROFILE.model_dump_json(), encoding="utf-8")
+    monkeypatch.setattr(cli_page, "PROFILE_FILE", profile_file)
+    monkeypatch.setattr(cli_page, "OUTPUT_DIR", tmp_path / "output")
+
+    result = cli_page.run_page("p05.jpg", tier="best")
+    path = cli_page.save_json(result, "p05.jpg", "best")
+
+    assert {model for _, model in calls} == {"anthropic:claude-opus-5-5"}
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert path.name == "p05.best.json"
+    assert saved["models"]["read_page"] == "anthropic:claude-opus-5-5"
+    assert saved["contacts"][0]["name"] == "כהן משה"
+    assert "כהן משה" in path.read_text(encoding="utf-8")  # Hebrew is not escaped

@@ -68,6 +68,8 @@ class Decision(BaseModel):
     node: str
     choice: str
     reason: str
+    model: str | None = None  # which LLM made this choice (None = rule or human)
+    cost_usd: float = 0.0  # what that LLM call cost
 
 
 # ---------------------------------------------------------------------------

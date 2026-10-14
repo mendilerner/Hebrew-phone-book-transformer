@@ -28,8 +28,11 @@ It calls the API once (my estimate: about $0.01-0.05); running it again on the s
 ## Try one page
 
 ```bash
-uv run python -m phonebook.cli_page samples/page_05.jpg   # read one page with the saved layout
+uv run python -m phonebook.cli_page samples/page_05.jpg              # read one page (Haiku)
+uv run python -m phonebook.cli_page samples/page_05.jpg --tier best  # same page with Opus
 ```
+`--tier` is `cheap` (Haiku), `strong` (Sonnet) or `best` (Opus). `phonebook.cli` has it too.
+The result is saved to `output/page_05.best.json` (gitignored, it has real numbers).
 Run layout discovery first: it saves the layout to `.cache/profile.json`.
 
 Phone book photos are private: keep them in `samples/` (ignored by git).

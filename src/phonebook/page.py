@@ -96,25 +96,29 @@ def ask_read_page(image_path: str, profile: LayoutProfile, model: str) -> tuple[
 
 
 def classify_page(state: PageState, config: RunnableConfig) -> dict:
-    check, cost = ask_page_kind(
-        state["image_path"], state["profile"], model_name("classify_page", config)
-    )
+    model = model_name("classify_page", config)
+    check, cost = ask_page_kind(state["image_path"], state["profile"], model)
     return {
         "page_kind": check.kind,
         "cost_usd": cost,
-        "decisions": [_decision(state, "classify_page", check.kind, check.reason)],
+        "decisions": [_decision(state, "classify_page", check.kind, check.reason, model, cost)],
     }
 
 
 def read_page(state: PageState, config: RunnableConfig) -> dict:
-    page, cost = ask_read_page(
-        state["image_path"], state["profile"], model_name("read_page", config)
-    )
+    model = model_name("read_page", config)
+    page, cost = ask_read_page(state["image_path"], state["profile"], model)
     draft = [_to_contact(entry, state["page_no"]) for entry in page.entries]
     if state["page_kind"] == "different_layout":
         for contact in draft:  # MVP has no rediscover_layout: read anyway, but let a human check
             contact.issues.append("page layout differs from the book")
-    return {"skeleton": page.rows, "draft": draft, "cost_usd": cost}
+    reason = f"{len(page.rows)} rows, {len(draft)} entries"
+    return {
+        "skeleton": page.rows,
+        "draft": draft,
+        "cost_usd": cost,
+        "decisions": [_decision(state, "read_page", "read", reason, model, cost)],
+    }
 
 
 def finalize_page(state: PageState, config: RunnableConfig) -> dict:
@@ -166,5 +170,8 @@ def _to_contact(entry: EntryDraft, page_no: int) -> Contact:
     )
 
 
-def _decision(state: PageState, node: str, choice: str, reason: str) -> Decision:
-    return Decision(node=node, choice=choice, reason=f"page {state['page_no']}: {reason}")
+def _decision(
+    state: PageState, node: str, choice: str, reason: str, model=None, cost=0.0
+) -> Decision:
+    reason = f"page {state['page_no']}: {reason}"
+    return Decision(node=node, choice=choice, reason=reason, model=model, cost_usd=cost)

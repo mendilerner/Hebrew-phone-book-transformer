@@ -3,14 +3,12 @@
 load_book -> discover_layout -> (R) more pages? -> confirm_layout (interrupt)
 """
 
-from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.types import interrupt
 from pydantic import BaseModel, Field
 
-from phonebook.cost import cost_usd
-from phonebook.images import image_block, list_pages
-from phonebook.llm import chat_model, model_name
+from phonebook.images import list_pages
+from phonebook.llm import ask_structured, model_name
 from phonebook.schema import BookState, Decision, LayoutProfile
 
 MAX_EXTRA_TRIES = 2  # topology: discover_layout may look at 2 more pages
@@ -59,19 +57,8 @@ def load_book(state: BookState) -> dict:
 
 
 def ask_layout_llm(image_paths: list[str], model: str) -> tuple[LayoutGuess, float]:
-    """One LLM call with structured output. Returns the guess and its cost in $.
-
-    method="json_schema": the newest models refuse forced tool calls, which is
-    how LangChain's default method gets structured output.
-    """
-    llm = chat_model(model).with_structured_output(
-        LayoutGuess, method="json_schema", include_raw=True
-    )
-    message = HumanMessage(
-        content=[*map(image_block, image_paths), {"type": "text", "text": "Describe the layout."}]
-    )
-    result = llm.invoke([SystemMessage(LAYOUT_PROMPT), message])
-    return result["parsed"], cost_usd(result["raw"], model)
+    """One LLM call with structured output. Returns the guess and its cost in $."""
+    return ask_structured(LayoutGuess, LAYOUT_PROMPT, image_paths, "Describe the layout.", model)
 
 
 def discover_layout(state: BookState, config: RunnableConfig) -> dict:
@@ -87,6 +74,8 @@ def discover_layout(state: BookState, config: RunnableConfig) -> dict:
                 node="discover_layout",
                 choice="clear" if guess.clear else "unclear",
                 reason=f"pages {state['sample_pages']}: {guess.reason}",
+                model=model,
+                cost_usd=cost,
             )
         ],
     }

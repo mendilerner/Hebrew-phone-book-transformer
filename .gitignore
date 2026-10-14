@@ -220,6 +220,7 @@ __marimo__/
 # Project
 .cache/
 samples/
+output/
 *.jpg
 *.jpeg
 *.png

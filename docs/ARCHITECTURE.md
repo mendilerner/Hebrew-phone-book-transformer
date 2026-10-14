@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **building the MVP** (steps 1-3 done: setup, free helpers, layout discovery). Last update: 2026-10-12.
+Status: **building the MVP** (steps 1-4 done: setup, free helpers, layout discovery, simple page sub-graph). Last update: 2026-10-12.
 
 ## Goal
 
@@ -61,6 +61,8 @@ or zoom. See [decision 0003](decisions/0003-flexible-row-reading.md).
 Code: [`src/phonebook/schema.py`](../src/phonebook/schema.py) (was the draft `docs/design/state_schema.py`).
 
 - Pydantic models for data: `LayoutProfile`, `Contact`, `Phone`, `Decision`.
+  A `Decision` from an LLM node also keeps its `model` and `cost_usd`
+  ([decision 0012](decisions/0012-model-choice-per-run.md)).
 - TypedDict for graph state: `BookState` (parent), `PageState` (sub-graph).
 - `contacts`, `review_queue`, `decisions` use the `add` reducer, so parallel
   pages append results. Same key names in both states → passed up automatically;
@@ -78,6 +80,8 @@ See [decision 0007](decisions/0007-cost-control.md). In short:
 - One LLM read per page; only flagged rows are read again.
 - Free Python checks before any LLM grader.
 - Models come from config (`config["configurable"]`): cheap first, strong only as a fix.
+  Tiers: `cheap` = Haiku, `strong` = Sonnet, `best` = Opus (only when a run asks for it;
+  the CLIs have `--tier`).
 - `read_page` agent: max 4 tool calls, small crops, cached prompt + profile.
 - Budget: default **$10 per book**, split into a share per page. Over budget → review queue.
 - Development: LLM answer cache on disk, 3-page test set, Batch API for full runs.
@@ -100,6 +104,19 @@ See [decision 0009](decisions/0009-mvp-scope.md). Everything above is in the MVP
 except `rediscover_layout`, `find_duplicates`, the `Store` (the profile stays in
 the state), and the Batch API.
 
+## Page reading rules (MVP)
+
+See [decision 0011](decisions/0011-simple-page-subgraph.md).
+- The LLM copies phones as raw text; Python (`parse_phone`) decides digits and kind.
+- Handwriting: the prompt lists Hebrew letters (and digits) that look alike. For names
+  the LLM may use its knowledge of common Hebrew names, but only to choose between
+  readings the ink allows. If it can't decide, it lists the readings in `doubts`, gives
+  a low confidence (so the entry goes to review), and writes `?` for an unreadable letter.
+- An entry goes to `review_queue` if it has any issue (LLM doubt or rule check)
+  or `confidence < min_confidence` (setting, default 0.8). Otherwise to `contacts`.
+- `different_layout` pages: read with the book layout, every entry goes to review
+  (no `rediscover_layout` in the MVP).
+
 ## Code layout
 
 - `src/phonebook/settings.py`: defaults (model ladder, tier per node, budget, cache path).
@@ -115,6 +132,13 @@ the state), and the Batch API.
   `confirm_layout` (interrupt) and the router `route_after_discover`.
 - `src/phonebook/book_graph.py`: `build_book_graph()` (layout part so far).
 - `src/phonebook/cli.py`: run the graph in the terminal and answer the interrupt.
+- `src/phonebook/page.py`: `classify_page` (LLM router), `read_page` (one LLM call for
+  now), `finalize_page` (rule checks; good → `contacts`, doubtful → `review_queue`).
+- `src/phonebook/page_graph.py`: `build_page_graph()`.
+- `src/phonebook/debug.py`: `--debug` mode: a callback handler prints every LLM message
+  (images shortened), and `graph.stream(stream_mode="updates")` prints every node's update.
+- `src/phonebook/cli_page.py`: read one page with the saved layout; `--tier` picks the
+  model; saves the full result to `output/<page>.<tier>.json` (gitignored).
 - `src/phonebook/export.py`: `export_excel` (phones as text) and `export_vcf`
   (only contacts with a mobile number).
 

@@ -14,6 +14,7 @@ class Settings(BaseModel):
         default_factory=lambda: {
             "cheap": "anthropic:claude-haiku-5-5",
             "strong": "anthropic:claude-sonnet-5-5",
+            "best": "anthropic:claude-opus-5-5",  # not used by default; pick it per run
         }
     )
     # Which ladder step each LLM node starts on. choose_fix can move a row to "strong".
@@ -29,6 +30,7 @@ class Settings(BaseModel):
     )
     budget_usd: float = 10.0  # max $ per book (decision 0007)
     max_attempts: int = 3  # retries per row
+    min_confidence: float = 0.8  # below this, an entry goes to the review queue
     cache_path: str = ".cache/llm.sqlite"  # dev mode: saved LLM answers
 
 

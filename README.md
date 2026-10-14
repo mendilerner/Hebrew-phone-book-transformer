@@ -18,4 +18,11 @@ uv run ruff check src tests    # find lint problems
 uv run ruff format src tests   # fix code formatting
 ```
 
+## Try layout discovery
+
+```bash
+uv run python -m phonebook.cli samples/   # reads 2-4 pages, shows the layout, asks you to accept
+```
+It calls the API once (my estimate: about $0.01-0.05); running it again on the same pages is free (disk cache).
+
 Phone book photos are private: keep them in `samples/` (ignored by git).

@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **building the MVP** (steps 1-2 done: setup, free helpers). Last update: 2026-10-12.
+Status: **building the MVP** (steps 1-3 done: setup, free helpers, layout discovery). Last update: 2026-10-12.
 
 ## Goal
 
@@ -66,6 +66,8 @@ Code: [`src/phonebook/schema.py`](../src/phonebook/schema.py) (was the draft `do
   pages append results. Same key names in both states → passed up automatically;
   page-only keys (`skeleton`, `draft`, `attempts`) stay private.
 - Images are stored as file paths, not bytes.
+- `BookState.layout_clear` (bool): `discover_layout`'s answer, read by its router
+  ([decision 0010](decisions/0010-layout-discovery-loop.md)).
 - `cost_usd` (float, `add` reducer) sums the cost of every LLM call;
   `budget_usd` (book) and `page_budget_usd` (page) limit it.
 
@@ -108,6 +110,11 @@ the state), and the Batch API.
 - `src/phonebook/schema.py`: data models and graph states (moved from `docs/design/`).
 - `src/phonebook/phones.py`: `parse_phone(raw)` → `Phone` (Israeli number rules).
 - `src/phonebook/rules.py`: `check_contact`, `letter_order_issues` (free checks).
+- `src/phonebook/images.py`: `list_pages`, `image_block` (upright, max 1568 px, JPEG).
+- `src/phonebook/layout.py`: `load_book`, `discover_layout`, `add_sample_page`,
+  `confirm_layout` (interrupt) and the router `route_after_discover`.
+- `src/phonebook/book_graph.py`: `build_book_graph()` (layout part so far).
+- `src/phonebook/cli.py`: run the graph in the terminal and answer the interrupt.
 - `src/phonebook/export.py`: `export_excel` (phones as text) and `export_vcf`
   (only contacts with a mobile number).
 

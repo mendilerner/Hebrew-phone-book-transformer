@@ -11,8 +11,9 @@ Legend: **R** = rule router, **L** = LLM router, **A** = ReAct agent,
 flowchart TD
     S([START]) --> load_book
     load_book --> discover_layout
-    discover_layout -->|R: unclear, tries left| discover_layout
-    discover_layout -->|R: clear| confirm_layout["confirm_layout ⏸"]
+    discover_layout -->|R: unclear, tries left| add_sample_page
+    add_sample_page --> discover_layout
+    discover_layout -->|R: clear, or no tries left| confirm_layout["confirm_layout ⏸"]
     confirm_layout --> save_profile["save_profile (Store)"]
     save_profile -->|⇉ one Send per page| page_graph[["page_graph (sub-graph)"]]
     page_graph --> find_duplicates
@@ -27,7 +28,8 @@ flowchart TD
 | Node | Does | LangGraph concept |
 |---|---|---|
 | `load_book` | lists page images, picks 2-3 sample pages | plain node |
-| `discover_layout` | vision LLM builds `LayoutProfile` | structured output, self-loop with counter |
+| `discover_layout` | vision LLM builds `LayoutProfile` | structured output, sets `layout_clear` |
+| `add_sample_page` | adds one more sample page (furthest from the others) | loop back; the counter is `len(sample_pages)` |
 | `confirm_layout` | shows profile, user accepts or edits it | `interrupt` + `Command(resume=...)` |
 | `save_profile` | saves profile per book | `Store` |
 | (edge) | `Send("page_graph", {...})` per page | map-reduce |

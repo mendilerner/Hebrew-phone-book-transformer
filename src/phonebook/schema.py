@@ -101,6 +101,7 @@ class BookState(TypedDict):
     page_paths: list[str]
     sample_pages: list[int]  # pages used for layout discovery
     profile: LayoutProfile | None
+    layout_clear: bool  # discover_layout's answer: is the layout clear? (router reads it)
     max_attempts: int
     budget_usd: float  # max $ per book, default 10 (decision 0007)
 

@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **building the MVP** (step 1: project setup done). Last update: 2026-10-12.
+Status: **building the MVP** (steps 1-2 done: setup, free helpers). Last update: 2026-10-12.
 
 ## Goal
 
@@ -58,7 +58,7 @@ or zoom. See [decision 0003](decisions/0003-flexible-row-reading.md).
 
 ## State
 
-Draft: [`docs/design/state_schema.py`](design/state_schema.py).
+Code: [`src/phonebook/schema.py`](../src/phonebook/schema.py) (was the draft `docs/design/state_schema.py`).
 
 - Pydantic models for data: `LayoutProfile`, `Contact`, `Phone`, `Decision`.
 - TypedDict for graph state: `BookState` (parent), `PageState` (sub-graph).
@@ -105,6 +105,11 @@ the state), and the Batch API.
 - `src/phonebook/llm.py`: `get_model(node, config, tier)` picks the model for a node.
 - `src/phonebook/cost.py`: `cost_usd(answer, model)` from token usage; cached answers cost 0.
 - `src/phonebook/llm_cache.py`: dev-mode disk cache for LLM answers.
+- `src/phonebook/schema.py`: data models and graph states (moved from `docs/design/`).
+- `src/phonebook/phones.py`: `parse_phone(raw)` → `Phone` (Israeli number rules).
+- `src/phonebook/rules.py`: `check_contact`, `letter_order_issues` (free checks).
+- `src/phonebook/export.py`: `export_excel` (phones as text) and `export_vcf`
+  (only contacts with a mobile number).
 
 ## Not decided yet
 

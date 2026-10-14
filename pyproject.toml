@@ -8,6 +8,7 @@ dependencies = [
     "langchain>=1.0",
     "langchain-anthropic>=1.0",
     "pydantic>=2.7",
+    "openpyxl>=3.1.5",
 ]
 
 [dependency-groups]

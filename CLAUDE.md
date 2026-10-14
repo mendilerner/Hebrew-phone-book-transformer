@@ -32,3 +32,32 @@ An intermediate Python/TypeScript developer and not a native English speaker:
 use simple words and short sentences. Add a short explanation to every
 terminal command. This is a learning project: don't hide or skip the LangGraph
 concepts.
+
+## How we work
+
+- One PR per step. The AI review bot (Claude Code GitHub Action) reviews each PR;
+  Claude fixes its findings; the user merges. A merge means "OK".
+- A change to `.github/workflows/` must go in its own PR to `main` first
+  (the action only runs a workflow that is identical to the one on `main`).
+- Phone book photos and real numbers never go into the repo (public). Tests use made-up numbers.
+- No time estimates per step.
+
+## Progress
+
+Project memory is off, so progress lives here. Update it in each PR.
+
+Design: 1 main flow ✓ · 2 decision points ✓ · 3 state ✓ · 4 topology + cost ✓ ·
+5 tools ✓ · 6 MVP scope ✓ (decisions 0001-0009).
+
+Build order (decision 0009):
+1. ✓ Project setup
+2. ✓ Free helpers (phones, rule checks, export)
+3. ○ `discover_layout` + `confirm_layout`
+4. ○ Simple page sub-graph
+5. ○ Book graph: `Send` + reducers
+6. ○ Agent tools + 4-call limit
+7. ○ Retry loop: grade → `choose_fix` → `reread_row`, model ladder, budget
+8. ○ `page_fix`
+9. ○ Human review + export, full-book run, real cost
+
+Open question for the user: should `.vcf` include landline and `*` numbers (now: yes)?

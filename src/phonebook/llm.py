@@ -32,7 +32,12 @@ def model_name(node: str, config: RunnableConfig | None = None, tier: str | None
 def get_model(
     node: str, config: RunnableConfig | None = None, tier: str | None = None
 ) -> BaseChatModel:
-    return init_chat_model(model_name(node, config, tier))
+    return chat_model(model_name(node, config, tier))
+
+
+def chat_model(name: str) -> BaseChatModel:
+    """A chat model from a 'provider:model' name."""
+    return init_chat_model(name)
 
 
 def enable_disk_cache(path: str | None = None) -> None:

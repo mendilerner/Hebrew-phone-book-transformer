@@ -8,7 +8,7 @@ Design: 1 main flow ✓ · 2 decision points ✓ · 3 state ✓ · 4 topology + 
 Build order (decision 0009):
 1. ✓ Project setup
 2. ✓ Free helpers (phones, rule checks, export)
-3. ○ `discover_layout` + `confirm_layout`
+3. ✓ `discover_layout` + `confirm_layout`
 4. ○ Simple page sub-graph
 5. ○ Book graph: `Send` + reducers
 6. ○ Agent tools + 4-call limit

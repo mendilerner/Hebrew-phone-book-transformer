@@ -1,4 +1,4 @@
-"""State schema draft for the Hebrew phone book parser (LangGraph).
+"""State schema for the Hebrew phone book parser (LangGraph).
 
 Two kinds of classes:
 - Pydantic models  = the DATA (what the LLM returns with structured output).
@@ -36,7 +36,9 @@ class LayoutProfile(BaseModel):
     has_printed_rows: bool
     sorted_by_letter: bool
     rows_per_page: int | None = None
-    quirks: list[str] = Field(default_factory=list, description="e.g. 'phones cross into name column'")
+    quirks: list[str] = Field(
+        default_factory=list, description="e.g. 'phones cross into name column'"
+    )
     confirmed_by_human: bool = False
 
 

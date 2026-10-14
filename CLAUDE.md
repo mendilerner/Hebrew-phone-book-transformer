@@ -32,3 +32,16 @@ An intermediate Python/TypeScript developer and not a native English speaker:
 use simple words and short sentences. Add a short explanation to every
 terminal command. This is a learning project: don't hide or skip the LangGraph
 concepts.
+
+## How we work
+
+- One PR per step. The AI review bot (Claude Code GitHub Action) reviews each PR;
+  Claude fixes its findings; the user merges. A merge means "OK".
+- A change to `.github/workflows/` must go in its own PR to `main` first
+  (the action only runs a workflow that is identical to the one on `main`).
+- Phone book photos and real numbers never go into the repo (public). Tests use made-up numbers.
+- No time estimates per step.
+
+## Progress
+
+Read [`docs/PROGRESS.md`](docs/PROGRESS.md) first, and update it in each PR.

@@ -33,7 +33,9 @@ def fake_llm(monkeypatch, answers):
     def fake(image_paths, model):
         calls.append(image_paths)
         clear = answers[len(calls) - 1]
-        return layout.LayoutGuess(profile=PROFILE, clear=clear, reason="fake"), 0.01
+        return layout.LayoutGuess(
+            observations="fake", profile=PROFILE, reason="fake", clear=clear
+        ), 0.01
 
     monkeypatch.setattr(layout, "ask_layout_llm", fake)
     return calls

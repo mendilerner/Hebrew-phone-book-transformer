@@ -17,6 +17,10 @@ MAX_EXTRA_TRIES = 2  # topology: discover_layout may look at 2 more pages
 
 LAYOUT_PROMPT = """You look at sample pages of a handwritten Hebrew phone book.
 Describe the LAYOUT of the book, not the contacts on these pages.
+
+First write your observations for each page: printed headers, columns and
+what is written in them, row lines, the Hebrew letter the page is for, and
+anything unusual. Then fill in the profile from those observations:
 - Columns in reading order (Hebrew: right to left) and what each holds.
 - Printed row lines? Sorted by Hebrew letter? About how many rows per page?
 - Quirks a reader must know (e.g. phones written across the name column).
@@ -24,11 +28,16 @@ Set clear=false if the pages don't agree or you can't see the layout well."""
 
 
 class LayoutGuess(BaseModel):
-    """What the LLM returns for discover_layout."""
+    """What the LLM returns for discover_layout.
 
+    Field order matters: the model writes the JSON top to bottom, so it writes
+    what it SEES (observations) before it DECIDES (profile, clear).
+    """
+
+    observations: str = Field(description="What you see on each sample page, before deciding")
     profile: LayoutProfile
+    reason: str = Field(description="One short sentence: why the layout is clear or not")
     clear: bool = Field(description="True if the layout is easy to see on these pages")
-    reason: str = Field(description="One short sentence: why clear or not clear")
 
 
 # ---------------------------------------------------------------------------

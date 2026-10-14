@@ -36,8 +36,12 @@ def get_model(
 
 
 def chat_model(name: str) -> BaseChatModel:
-    """A chat model from a 'provider:model' name."""
-    return init_chat_model(name)
+    """A chat model from a 'provider:model' name.
+
+    max_tokens: LangChain's Anthropic default is 4096. Hidden thinking also counts
+    against it, so a long answer could be cut off. You pay only for tokens used.
+    """
+    return init_chat_model(name, max_tokens=16_000)
 
 
 def enable_disk_cache(path: str | None = None) -> None:

@@ -89,8 +89,8 @@ See [decision 0007](decisions/0007-cost-control.md). In short:
 ## Tools
 
 See [`docs/design/tools.md`](design/tools.md) (proposed in decision 0008).
-Agent tools only in `read_page`: `row_view`, `crop_region`, `ink_crosses_line`,
-`check_phone`. Everything else is a free Python helper or one LLM call with
+Agent tools only in `read_page`: `zoom_band`, `crop_region`, `check_phone`
+([decision 0014](decisions/0014-ruler-instead-of-row-lines.md)). Everything else is a free Python helper or one LLM call with
 structured output.
 
 ## Output rules
@@ -129,11 +129,8 @@ See [decision 0011](decisions/0011-simple-page-subgraph.md).
 - `src/phonebook/rules.py`: `check_contact`, `letter_order_issues` (free checks).
 - `src/phonebook/images.py`: `list_pages`, `load_page`, `image_block` (upright, max 2576 px,
   JPEG), `crop_block` (a part of the page in full resolution).
-- `src/phonebook/rows.py`: `find_row_lines` (OpenCV), `ink_crosses_line`,
-  `with_row_numbers` (row numbers in a white strip next to the page).
-- `src/phonebook/cli_rows.py`: free preview of the row lines found on a page
-  (`output/<page>.rows.jpg`).
-- `src/phonebook/tools.py`: `make_tools(img, rows)`: the 4 agent tools for one page.
+- `src/phonebook/ruler.py`: `with_ruler` (a % ruler on the left and top of the page).
+- `src/phonebook/tools.py`: `make_tools(img)`: the 3 agent tools for one page.
 - `src/phonebook/layout.py`: `load_book`, `discover_layout`, `add_sample_page`,
   `confirm_layout` (interrupt) and the router `route_after_discover`.
 - `src/phonebook/book_graph.py`: `build_book_graph()` (layout part so far).

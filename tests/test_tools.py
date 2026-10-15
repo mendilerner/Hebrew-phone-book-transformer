@@ -8,65 +8,46 @@ from langchain_core.messages import AIMessage
 from PIL import Image, ImageDraw
 
 from phonebook import page
-from phonebook.rows import find_row_lines, ink_crosses_line, with_row_numbers
+from phonebook.ruler import with_ruler
 from phonebook.schema import ColumnSpec, LayoutProfile
 from phonebook.tools import make_tools
 
-LINE_YS = [200 + 100 * i for i in range(11)]  # 11 lines -> 10 rows
 
-
-def drawn_page(tilt=6) -> Image.Image:
-    """A white page with printed lines (a bit tilted, like a photo) and some 'writing'."""
+def drawn_page() -> Image.Image:
+    """A white page with some lines and 'writing' (a plain test picture)."""
     img = Image.new("RGB", (1200, 1600), "white")
     draw = ImageDraw.Draw(img)
-    for y in LINE_YS:
-        draw.line((40, y, 1160, y + tilt), fill="black", width=3)
-    draw.rectangle((300, 240, 700, 270), fill="black")  # writing inside row 1
-    draw.rectangle((300, 470, 330, 530), fill="black")  # a long stroke over line 4 (row 3/4)
+    for i in range(11):
+        draw.line((40, 200 + 100 * i, 1160, 206 + 100 * i), fill=(255, 182, 193), width=3)
+    draw.rectangle((300, 240, 700, 270), fill="black")
     return img
 
 
-def test_finds_the_printed_lines():
-    rows = find_row_lines(drawn_page())
-    assert rows.row_count == 10
-    assert all(abs(found - y) <= 6 for found, y in zip(rows.ys, LINE_YS, strict=True))
-
-
-def test_no_lines_means_no_rows():
-    assert find_row_lines(Image.new("RGB", (800, 1000), "white")).row_count == 0
-
-
-def test_ink_crosses_line():
+def test_ruler_is_drawn_next_to_the_page():
     img = drawn_page()
-    rows = find_row_lines(img)
-    assert ink_crosses_line(img, rows, 1) == {"above": False, "below": False}
-    assert ink_crosses_line(img, rows, 3)["below"] is True  # the stroke over line 4
-
-
-def test_row_numbers_are_drawn_next_to_the_page():
-    img = drawn_page()
-    numbered = with_row_numbers(img, find_row_lines(img))
-    assert numbered.height == img.height and numbered.width > img.width
+    ruled = with_ruler(img)
+    assert ruled.width > img.width and ruled.height > img.height
+    strip = round(img.width * 0.06)
+    page_area = (strip, strip, strip + img.width, strip + img.height)
+    assert ruled.crop(page_area).tobytes() == img.tobytes()  # nothing drawn on the page
 
 
 def tools_by_name(img):
-    return {t.name: t for t in make_tools(img, find_row_lines(img))}
+    return {t.name: t for t in make_tools(img)}
 
 
-def test_row_view_returns_images():
+def test_zoom_band_returns_two_halves():
     tools = tools_by_name(drawn_page())
-    strip = tools["row_view"].invoke({"row": 2, "mode": "strip"})
-    assert [b["type"] for b in strip] == ["text", "image"]
-    zoom = tools["row_view"].invoke({"row": 2, "mode": "zoom"})
+    zoom = tools["zoom_band"].invoke({"top": 12, "bottom": 19})
     assert [b["type"] for b in zoom] == ["text", "image", "text", "image"]
-    assert "No row 99" in tools["row_view"].invoke({"row": 99})
+    assert "Use 0 <= top < bottom" in tools["zoom_band"].invoke({"top": 50, "bottom": 40})
 
 
-def test_tools_without_lines_say_use_crop():
-    tools = tools_by_name(Image.new("RGB", (800, 1000), "white"))
-    assert "crop_region" in tools["row_view"].invoke({"row": 1})
-    crop = tools["crop_region"].invoke({"x0": 0.1, "y0": 0.1, "x1": 0.3, "y1": 0.2})
+def test_crop_region():
+    tools = tools_by_name(drawn_page())
+    crop = tools["crop_region"].invoke({"x0": 10, "y0": 10, "x1": 30, "y1": 20})
     assert crop[1]["type"] == "image"
+    assert "Use 0 <= x0" in tools["crop_region"].invoke({"x0": 0, "y0": 0, "x1": 120, "y1": 5})
 
 
 def test_check_phone():
@@ -102,7 +83,7 @@ def test_read_page_agent_uses_a_tool_then_answers(monkeypatch, tmp_path):
     replies = [
         AIMessage(
             "",
-            tool_calls=[{"name": "row_view", "args": {"row": 1, "mode": "zoom"}, "id": "t1"}],
+            tool_calls=[{"name": "zoom_band", "args": {"top": 12, "bottom": 19}, "id": "t1"}],
             usage_metadata=usage,
         ),
         AIMessage(json.dumps(answer, ensure_ascii=False), usage_metadata=usage),
@@ -157,7 +138,9 @@ def test_agent_is_sent_back_once_to_check_unclear_rows(monkeypatch, tmp_path):
 
     replies = [
         answer(0.4),  # answers at once, unsure, no tools -> the middleware sends it back
-        AIMessage("", tool_calls=[{"name": "row_view", "args": {"row": 3}, "id": "t1"}]),
+        AIMessage(
+            "", tool_calls=[{"name": "zoom_band", "args": {"top": 30, "bottom": 36}, "id": "t1"}]
+        ),
         answer(0.9),
     ]
     seen = []
@@ -175,13 +158,3 @@ def test_agent_is_sent_back_once_to_check_unclear_rows(monkeypatch, tmp_path):
     assert len(seen) == 3
     assert "Least sure rows: 3" in seen[1][-1].content
     assert result.entries[0].confidence == 0.9
-
-
-def test_cli_rows_saves_a_preview(monkeypatch, tmp_path):
-    from phonebook import cli_rows
-
-    path = tmp_path / "page.jpg"
-    drawn_page().save(path)
-    monkeypatch.setattr(cli_rows, "OUTPUT_DIR", tmp_path / "output")
-    saved, count = cli_rows.preview(str(path))
-    assert count == 10 and saved.exists()

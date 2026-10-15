@@ -1,6 +1,6 @@
 # 0013: Agent tools before the book graph
 
-Date: 2026-10-14 · Status: Accepted
+Date: 2026-10-14 · Status: Accepted · Row lines and `row_view`: superseded by 0014
 
 **Context:** real runs of the simple page graph read Hebrew letters badly, even
 with Opus. The page was shrunk to 1568 px, so handwriting was small.

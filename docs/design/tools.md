@@ -12,14 +12,13 @@ Three kinds of "tools". Only the first kind is a real LLM tool.
 
 | Tool | Input | Returns | Why |
 |---|---|---|---|
-| `row_view` | `row`, `mode`: `strip` / `window3` / `zoom` | image(s) | the row views from [0003](../decisions/0003-flexible-row-reading.md); zoom = right half + left half |
-| `crop_region` | box `x0, y0, x1, y1` (0..1 of the page), `pad` | image | free look at any part (a note, a crossed digit) |
-| `ink_crosses_line` | `row` | `{above: bool, below: bool}` | tells the agent which view to pick; OpenCV, no LLM |
+| `zoom_band` | `top`, `bottom` (left ruler, 0-100) | 2 images | a band across the page, bigger: right half + left half ([0014](../decisions/0014-ruler-instead-of-row-lines.md)) |
+| `crop_region` | box `x0, y0, x1, y1` (ruler numbers, 0-100) | image | free look at any part (a note, a crossed digit) |
 | `check_phone` | `text` | `Phone` (digits, kind) or error | the agent checks a number it read; same code as `parse_phone` |
 
 - Image tools return an **image** in the tool message, so the model sees it.
-- The page the agent sees first has the row numbers drawn in a white strip on the
-  left, so its row numbers and ours are the same ([0013](../decisions/0013-agent-tools-first.md)).
+- The page the agent sees has a red % ruler on the left and the top, so it can say
+  where to look ([0014](../decisions/0014-ruler-instead-of-row-lines.md)). It counts rows itself.
 - Image tools only cut the page file on disk; the state keeps only paths.
 - The agent is the **prebuilt** `create_agent` (LangChain 1.x), with
   `ToolCallLimitMiddleware(run_limit=4)` (default `exit_behavior="continue"`: after
@@ -33,7 +32,7 @@ Three kinds of "tools". Only the first kind is a real LLM tool.
 |---|---|---|
 | `list_pages` | `load_book` | finds page images, sorts them, picks 2-3 sample pages |
 | `prepare_image` | `load_book` | fixes rotation, resizes to a max size (fewer image tokens) |
-| `find_row_lines` | `read_page`, tools | finds printed row lines (OpenCV); returns nothing if the book has none |
+| `with_ruler` | `read_page` | draws a % ruler next to the page (never on it) |
 | `parse_phone` | `grade_entries`, `export` | `raw` → digits + kind (mobile / landline / old 7-digit / `*` short code) |
 | `rule_checks` | `grade_entries` | digit count, empty name, letter order → `issues` |
 | `track_cost` | every LLM call | reads token usage → adds to `cost_usd` (a LangChain callback) |

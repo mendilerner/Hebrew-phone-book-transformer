@@ -175,3 +175,13 @@ def test_agent_is_sent_back_once_to_check_unclear_rows(monkeypatch, tmp_path):
     assert len(seen) == 3
     assert "Least sure rows: 3" in seen[1][-1].content
     assert result.entries[0].confidence == 0.9
+
+
+def test_cli_rows_saves_a_preview(monkeypatch, tmp_path):
+    from phonebook import cli_rows
+
+    path = tmp_path / "page.jpg"
+    drawn_page().save(path)
+    monkeypatch.setattr(cli_rows, "OUTPUT_DIR", tmp_path / "output")
+    saved, count = cli_rows.preview(str(path))
+    assert count == 10 and saved.exists()

@@ -131,6 +131,8 @@ See [decision 0011](decisions/0011-simple-page-subgraph.md).
   JPEG), `crop_block` (a part of the page in full resolution).
 - `src/phonebook/rows.py`: `find_row_lines` (OpenCV), `ink_crosses_line`,
   `with_row_numbers` (row numbers in a white strip next to the page).
+- `src/phonebook/cli_rows.py`: free preview of the row lines found on a page
+  (`output/<page>.rows.jpg`).
 - `src/phonebook/tools.py`: `make_tools(img, rows)`: the 4 agent tools for one page.
 - `src/phonebook/layout.py`: `load_book`, `discover_layout`, `add_sample_page`,
   `confirm_layout` (interrupt) and the router `route_after_discover`.

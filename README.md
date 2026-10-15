@@ -31,6 +31,9 @@ It calls the API once (my estimate: about $0.01-0.05); running it again on the s
 uv run python -m phonebook.cli_page samples/page_05.jpg              # read one page (Haiku)
 uv run python -m phonebook.cli_page samples/page_05.jpg --tier best  # same page with Opus
 ```
+Free check first (no LLM): `uv run python -m phonebook.cli_rows samples/page_05.jpg` saves
+`output/page_05.rows.jpg` with the row lines and numbers the agent will see.
+
 The page reader is an agent: it can zoom into hard rows (max 4 tool calls per page).
 
 Add `--debug` to see the steps as a tree: each node of the graph, and indented under

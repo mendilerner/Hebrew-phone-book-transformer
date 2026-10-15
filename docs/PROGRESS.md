@@ -10,8 +10,8 @@ Build order (decision 0009):
 2. ✓ Free helpers (phones, rule checks, export)
 3. ✓ `discover_layout` + `confirm_layout`
 4. ✓ Simple page sub-graph
-5. ○ Book graph: `Send` + reducers
-6. ○ Agent tools + 4-call limit
+5. ○ Book graph: `Send` + reducers (next)
+6. ✓ Agent tools + 4-call limit (done before 5, decision 0013)
 7. ○ Retry loop: grade → `choose_fix` → `reread_row`, model ladder, budget
 8. ○ `page_fix`
 9. ○ Human review + export, full-book run, real cost

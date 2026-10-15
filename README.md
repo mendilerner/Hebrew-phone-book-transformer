@@ -31,8 +31,22 @@ It calls the API once (my estimate: about $0.01-0.05); running it again on the s
 uv run python -m phonebook.cli_page samples/page_05.jpg              # read one page (Haiku)
 uv run python -m phonebook.cli_page samples/page_05.jpg --tier best  # same page with Opus
 ```
-Add `--debug` to see every message sent to the LLM, its answer, and every graph step
-(printed to stderr; save it with `2> debug.txt`).
+The page reader is an agent: it sees the page with a % ruler and can zoom into hard rows (max 4 tool calls per page).
+
+### Is each tool useful? Measure it
+
+```bash
+uv run python -m phonebook.cli_tool samples/page_05.jpg zoom_band 30 36     # free: see what one tool shows the model
+uv run python -m phonebook.cli_page samples/page_05.jpg --tier strong --tools none        # read with no tools
+uv run python -m phonebook.cli_page samples/page_05.jpg --tier strong --tools zoom_band   # only zoom_band
+uv run python -m phonebook.cli_page samples/page_05.jpg --tier strong                     # all tools
+uv run python -m phonebook.cli_score --make-truth output/page_05.strong.json truth/page_05.json  # then fix it by hand
+uv run python -m phonebook.cli_score truth/page_05.json output/page_05.strong*.json      # compare the runs
+```
+
+Add `--debug` to see the steps as a tree: each node of the graph, and indented under
+`read_page` the agent's steps (model, middleware, tools), with tokens and cost per LLM
+call. All details (full prompts and answers) go to `output/<page>.<tier>.debug.txt`.
 
 `--tier` is `cheap` (Haiku), `strong` (Sonnet) or `best` (Opus). `phonebook.cli` has it too.
 The result is saved to `output/page_05.best.json` (gitignored, it has real numbers).

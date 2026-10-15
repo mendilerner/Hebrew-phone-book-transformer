@@ -1,18 +1,26 @@
-"""Page sub-graph nodes (build step 4: the simple version).
+"""Page sub-graph nodes.
 
-classify_page (L) -> read_page -> finalize_page
-Later steps add: agent tools in read_page, the retry loop, page_fix.
+classify_page (L) -> read_page (A: an agent with tools) -> finalize_page
+Later steps add: the retry loop, page_fix.
 """
 
 from typing import Literal
 
+from langchain.agents import create_agent
+from langchain.agents.middleware import ToolCallLimitMiddleware, after_model
+from langchain.agents.structured_output import ProviderStrategy
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
-from phonebook.llm import ask_structured, model_name, setting
+from phonebook.cost import cost_usd
+from phonebook.images import load_page, to_block
+from phonebook.llm import ask_structured, chat_model, model_name, setting
 from phonebook.phones import parse_phone
+from phonebook.ruler import with_ruler
 from phonebook.rules import check_contact
 from phonebook.schema import Contact, Decision, LayoutProfile, PageState
+from phonebook.tools import make_tools
 
 # ---------------------------------------------------------------------------
 # What the LLM returns. Rule: observations first, decision last (decision 0010).
@@ -89,8 +97,38 @@ Steps:
 6. Put columns that are not name/phone/address/notes into extra.
 7. confidence: about 0.9 or more only when every letter and digit is clear.
 
+{tools}
+
 Book layout:
 {profile}"""
+
+
+TOOLS_PROMPT = """Tools: you can look at parts of the page again, in full resolution.
+The page has a red ruler (it is not part of the book): on the left, 0 = top and
+100 = bottom of the page; on the top, 0 = left and 100 = right. Use these numbers
+in the tools. Count the rows yourself from the top, starting at 1.
+{tool_lines}
+You have at most {max_calls} tool calls for this page.
+
+How to work:
+1. Look at the whole page and read every row.
+2. Before your final answer, check the hardest rows with the tools: rows where a
+   letter or digit is unclear. Use the calls on the rows you are least sure about.
+3. Then give your final answer, with what you learned from the tools.
+Answer without any tool call only when every entry is fully clear.
+"""
+
+NO_TOOLS_PROMPT = """The page has a red ruler (it is not part of the book). Count the rows
+yourself from the top, starting at 1.
+"""
+
+# One line per tool for the prompt. Only the tools turned on are listed (setting agent_tools).
+TOOL_LINES = {
+    "zoom_band": "- zoom_band(top, bottom): a band across the page, bigger (small or unclear\n"
+    "  letters and digits; take a taller band when ink crosses the row lines).",
+    "crop_region": "- crop_region(x0, y0, x1, y1): any part of the page, for example a note.",
+    "check_phone": "- check_phone(text): a free check of a phone number you read.",
+}
 
 
 def _profile_text(profile: LayoutProfile) -> str:
@@ -102,9 +140,78 @@ def ask_page_kind(image_path: str, profile: LayoutProfile, model: str) -> tuple[
     return ask_structured(PageCheck, prompt, [image_path], "What kind of page is this?", model)
 
 
-def ask_read_page(image_path: str, profile: LayoutProfile, model: str) -> tuple[PageRead, float]:
-    prompt = READ_PROMPT.format(profile=_profile_text(profile))
-    return ask_structured(PageRead, prompt, [image_path], "Read this page.", model)
+def check_before_answer(min_confidence: float):
+    """Agent middleware: an after_model hook (runs after every model turn).
+
+    If the model gives its final answer without using any tool, while some entries
+    have a low confidence, we send it back once: "check these rows first".
+    jump_to="model" is how middleware changes the agent's flow.
+    """
+
+    @after_model(can_jump_to=["model"])
+    def check(state, runtime):
+        answer = state.get("structured_response")
+        last = state["messages"][-1]
+        used_tools = any(isinstance(m, ToolMessage) for m in state["messages"])
+        asked_before = sum(isinstance(m, HumanMessage) for m in state["messages"]) > 1
+        if answer is None or getattr(last, "tool_calls", None) or used_tools or asked_before:
+            return None
+        weak = [e for e in answer.entries if e.confidence < min_confidence]
+        if not weak:
+            return None
+        weak.sort(key=lambda e: e.confidence)
+        rows = ", ".join(str(e.rows[0]) for e in weak[:6] if e.rows)
+        note = (
+            f"Before the final answer, check the unclear rows with the tools "
+            f"(for example zoom_band(top, bottom)). Least sure rows: {rows}. "
+            "Then answer again."
+        )
+        return {"messages": [HumanMessage(note)], "jump_to": "model"}
+
+    return check
+
+
+def ask_read_page(
+    image_path: str,
+    profile: LayoutProfile,
+    model: str,
+    max_calls: int = 4,
+    min_confidence: float = 0.8,
+    tools: list[str] | None = None,
+) -> tuple[PageRead, float]:
+    """The read_page agent: the prebuilt create_agent (a model <-> tools loop graph).
+
+    ToolCallLimitMiddleware stops the tools after `max_calls` calls, so the model
+    must answer with what it has (decision 0008). ProviderStrategy gets the final
+    answer as structured output with the provider's own JSON mode (decision 0010).
+
+    `tools`: names of the tools to turn on (None = all). With no tools the agent
+    is one model call, like build step 4. This lets you measure each tool.
+    """
+    img = load_page(image_path)
+    page_tools = make_tools(img, tools)
+    if page_tools:
+        lines = "\n".join(TOOL_LINES[t.name] for t in page_tools)
+        tools_text = TOOLS_PROMPT.format(tool_lines=lines, max_calls=max_calls)
+        middleware = [
+            ToolCallLimitMiddleware(run_limit=max_calls),
+            check_before_answer(min_confidence),
+        ]
+    else:
+        tools_text, middleware = NO_TOOLS_PROMPT, []
+    prompt = READ_PROMPT.format(profile=_profile_text(profile), tools=tools_text)
+    agent = create_agent(
+        chat_model(model),
+        tools=page_tools,
+        system_prompt=prompt,
+        response_format=ProviderStrategy(PageRead),
+        middleware=middleware,
+    )
+    content = [to_block(with_ruler(img)), {"type": "text", "text": "Read this page."}]
+    result = agent.invoke({"messages": [HumanMessage(content=content)]})
+    # Every model turn of the agent costs money: add them all up.
+    cost = sum(cost_usd(m, model) for m in result["messages"] if isinstance(m, AIMessage))
+    return result["structured_response"], cost
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +231,12 @@ def classify_page(state: PageState, config: RunnableConfig) -> dict:
 
 def read_page(state: PageState, config: RunnableConfig) -> dict:
     model = model_name("read_page", config)
-    page, cost = ask_read_page(state["image_path"], state["profile"], model)
+    max_calls = setting(config, "agent_tool_calls")
+    min_confidence = setting(config, "min_confidence")
+    tools = setting(config, "agent_tools")
+    page, cost = ask_read_page(
+        state["image_path"], state["profile"], model, max_calls, min_confidence, tools
+    )
     draft = [_to_contact(entry, state["page_no"]) for entry in page.entries]
     if state["page_kind"] == "different_layout":
         for contact in draft:  # MVP has no rediscover_layout: read anyway, but let a human check

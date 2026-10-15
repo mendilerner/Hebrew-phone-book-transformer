@@ -2,7 +2,7 @@
 
 uv run python -m phonebook.cli samples/              # real LLM calls (needs ANTHROPIC_API_KEY)
 uv run python -m phonebook.cli samples/ --tier best  # find the layout with Opus
-uv run python -m phonebook.cli samples/ --debug      # show LLM messages and graph steps
+uv run python -m phonebook.cli samples/ --debug      # step tree + output/layout.debug.txt
 """
 
 import argparse
@@ -19,12 +19,18 @@ from phonebook.llm import enable_disk_cache
 PROFILE_FILE = Path(".cache/profile.json")
 
 
+DEBUG_FILE = Path("output/layout.debug.txt")
+
+
 def main(folder: str, tier: str | None = None, debug: bool = False) -> None:
     enable_disk_cache()  # same pages again -> saved answer, $0
     graph = build_book_graph()
     config = {"configurable": {"thread_id": str(uuid.uuid4())}}
     if tier:
         config["configurable"]["tiers"] = {"discover_layout": tier}
+    if debug:
+        DEBUG_FILE.unlink(missing_ok=True)  # a new file for each run
+    debug = DEBUG_FILE if debug else None
 
     result = run_graph(graph, {"book_id": folder}, config, debug)
     while "__interrupt__" in result:  # the graph paused and waits for us
@@ -53,6 +59,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--tier", choices=["cheap", "strong", "best"], help="model for discover_layout"
     )
-    parser.add_argument("--debug", action="store_true", help="print LLM messages and graph steps")
+    parser.add_argument(
+        "--debug", action="store_true", help="show the graph steps; details go to a file"
+    )
     args = parser.parse_args()
     main(args.folder, args.tier, args.debug)

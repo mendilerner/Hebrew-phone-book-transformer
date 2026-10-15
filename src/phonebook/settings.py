@@ -30,6 +30,8 @@ class Settings(BaseModel):
     )
     budget_usd: float = 10.0  # max $ per book (decision 0007)
     max_attempts: int = 3  # retries per row
+    agent_tool_calls: int = 4  # max tool calls of the read_page agent per page (decision 0007)
+    agent_tools: list[str] | None = None  # read_page agent tools to turn on (None = all)
     min_confidence: float = 0.8  # below this, an entry goes to the review queue
     cache_path: str = ".cache/llm.sqlite"  # dev mode: saved LLM answers
 

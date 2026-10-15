@@ -85,16 +85,18 @@ def test_image_block_makes_big_photos_smaller(tmp_path):
     assert block["mime_type"] == "image/jpeg" and len(block["base64"]) < 200_000
 
 
-def test_debug_mode_stops_at_the_question_and_resumes(monkeypatch, book, capsys):
+def test_debug_mode_stops_at_the_question_and_resumes(monkeypatch, book, capsys, tmp_path):
     from phonebook.debug import run_graph
 
     fake_llm(monkeypatch, [True])
     graph = build_book_graph()
     config = {"configurable": {"thread_id": "debug"}}
 
-    paused = run_graph(graph, {"book_id": book}, config, debug=True)
+    log = tmp_path / "debug.txt"
+    paused = run_graph(graph, {"book_id": book}, config, debug=log)
     assert "__interrupt__" in paused
-    done = run_graph(graph, Command(resume={"accept": True}), config, debug=True)
+    done = run_graph(graph, Command(resume={"accept": True}), config, debug=log)
 
     assert done["profile"].confirmed_by_human
-    assert "INTERRUPT" in capsys.readouterr().err
+    assert "PAUSED: waiting for a human answer" in capsys.readouterr().out
+    assert "INTERRUPT" in log.read_text(encoding="utf-8")

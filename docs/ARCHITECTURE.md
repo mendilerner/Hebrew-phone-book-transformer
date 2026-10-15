@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **building the MVP** (steps 1-4 done: setup, free helpers, layout discovery, simple page sub-graph). Last update: 2026-10-12.
+Status: **building the MVP** (steps 1-4 and 6 done: setup, free helpers, layout discovery, page sub-graph, agent tools; step 6 was moved before 5, [decision 0013](decisions/0013-agent-tools-first.md)). Last update: 2026-10-14.
 
 ## Goal
 
@@ -89,8 +89,8 @@ See [decision 0007](decisions/0007-cost-control.md). In short:
 ## Tools
 
 See [`docs/design/tools.md`](design/tools.md) (proposed in decision 0008).
-Agent tools only in `read_page`: `row_view`, `crop_region`, `ink_crosses_line`,
-`check_phone`. Everything else is a free Python helper or one LLM call with
+Agent tools only in `read_page`: `zoom_band`, `crop_region`, `check_phone`
+([decision 0014](decisions/0014-ruler-instead-of-row-lines.md)). Everything else is a free Python helper or one LLM call with
 structured output.
 
 ## Output rules
@@ -127,16 +127,26 @@ See [decision 0011](decisions/0011-simple-page-subgraph.md).
 - `src/phonebook/schema.py`: data models and graph states (moved from `docs/design/`).
 - `src/phonebook/phones.py`: `parse_phone(raw)` → `Phone` (Israeli number rules).
 - `src/phonebook/rules.py`: `check_contact`, `letter_order_issues` (free checks).
-- `src/phonebook/images.py`: `list_pages`, `image_block` (upright, max 1568 px, JPEG).
+- `src/phonebook/images.py`: `list_pages`, `load_page`, `image_block` (upright, max 2576 px,
+  JPEG), `crop_block` (a part of the page in full resolution).
+- `src/phonebook/ruler.py`: `with_ruler` (a % ruler on the left and top of the page).
+- `src/phonebook/tools.py`: `make_tools(img, names)`: the agent tools for one page; setting
+  `agent_tools` turns tools on and off (None = all, [] = no tools).
+- `src/phonebook/cli_tool.py`: run one tool by hand and save what the model would see.
+- `src/phonebook/cli_score.py`: score runs against a hand-checked page (`truth/`, gitignored).
 - `src/phonebook/layout.py`: `load_book`, `discover_layout`, `add_sample_page`,
   `confirm_layout` (interrupt) and the router `route_after_discover`.
 - `src/phonebook/book_graph.py`: `build_book_graph()` (layout part so far).
 - `src/phonebook/cli.py`: run the graph in the terminal and answer the interrupt.
-- `src/phonebook/page.py`: `classify_page` (LLM router), `read_page` (one LLM call for
-  now), `finalize_page` (rule checks; good → `contacts`, doubtful → `review_queue`).
+- `src/phonebook/page.py`: `classify_page` (LLM router), `read_page` (agent:
+  `create_agent` + `ToolCallLimitMiddleware` (setting `agent_tool_calls` = 4) +
+  `check_before_answer` middleware), `finalize_page` (rule checks; good → `contacts`, doubtful → `review_queue`).
 - `src/phonebook/page_graph.py`: `build_page_graph()`.
-- `src/phonebook/debug.py`: `--debug` mode: a callback handler prints every LLM message
-  (images shortened), and `graph.stream(stream_mode="updates")` prints every node's update.
+- `src/phonebook/debug.py`: `--debug` mode. The terminal shows a step tree:
+  `graph.stream(stream_mode="tasks", subgraphs=True)` gives each node start and end,
+  also the agent's steps inside `read_page` (indented). A callback handler adds one
+  line per LLM call. All details (full prompts, answers, node results, the graph as
+  Mermaid) go to a UTF-8 file in `output/`.
 - `src/phonebook/cli_page.py`: read one page with the saved layout; `--tier` picks the
   model; saves the full result to `output/<page>.<tier>.json` (gitignored).
 - `src/phonebook/export.py`: `export_excel` (phones as text) and `export_vcf`

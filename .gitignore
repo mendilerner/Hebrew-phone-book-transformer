@@ -221,6 +221,7 @@ __marimo__/
 .cache/
 samples/
 output/
+truth/
 *.jpg
 *.jpeg
 *.png

@@ -1,6 +1,6 @@
 # 0003: Read rows in more than one way
 
-Date: 2026-10-01 · Status: Accepted
+Date: 2026-10-01 · Status: Accepted · The "ink crosses this line?" check: superseded by 0014
 
 **Context:** Cutting the page into tight row strips made LLM results worse,
 because letters and digits cross the row lines.

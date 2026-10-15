@@ -51,7 +51,7 @@ def run_page(
     return {
         "image": image_path,
         "models": {node: model_name(node, config) for node in LLM_NODES},
-        "tools": setting(config, "agent_tools") or "all",
+        "tools": _tools_label(setting(config, "agent_tools")),
         "cost_usd": round(out.get("cost_usd", 0), 6),
         "page_kind": out.get("page_kind"),
         "skeleton": out.get("skeleton", []),
@@ -67,6 +67,13 @@ def run_name(image_path: str, tier: str | None, tools: list[str] | None) -> str:
     if tools is not None:
         name += "." + ("+".join(tools) or "no-tools")
     return name
+
+
+def _tools_label(tools: list[str] | None) -> list[str] | str:
+    """None means all tools; an empty list means no tools (not the same!)."""
+    if tools is None:
+        return "all"
+    return tools or "none"
 
 
 def save_json(result: dict, name: str) -> Path:

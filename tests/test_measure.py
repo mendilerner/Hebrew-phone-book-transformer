@@ -83,3 +83,9 @@ def test_score_counts_right_and_wrong(tmp_path):
     cli_score.make_truth(run_file, tmp_path / "truth" / "p.json")
     made = json.loads((tmp_path / "truth" / "p.json").read_text(encoding="utf-8"))
     assert made[0] == {"rows": [1], "name": "כהן משה", "phones": ["050-1234567"]}
+
+
+def test_tools_label_in_the_output():
+    assert cli_page._tools_label(None) == "all"
+    assert cli_page._tools_label([]) == "none"
+    assert cli_page._tools_label(["zoom_band"]) == ["zoom_band"]

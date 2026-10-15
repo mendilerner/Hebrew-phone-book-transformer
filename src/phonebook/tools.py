@@ -14,7 +14,9 @@ from phonebook.phones import parse_phone
 PAD = 1.5  # % of the page height added above and below a band
 
 
-def make_tools(img: Image.Image) -> list[BaseTool]:
+def make_tools(img: Image.Image, names: list[str] | None = None) -> list[BaseTool]:
+    """The tools for this page. `names`: only these (None = all), to test each tool."""
+
     def px_y(pct: float) -> int:
         return round(img.height * pct / 100)
 
@@ -60,7 +62,13 @@ def make_tools(img: Image.Image) -> list[BaseTool]:
         short_code, or unknown = it looks wrong, for example a missing digit)."""
         return parse_phone(text).model_dump()
 
-    return [zoom_band, crop_region, check_phone]
+    tools = [zoom_band, crop_region, check_phone]
+    if names is None:
+        return tools
+    unknown = set(names) - {t.name for t in tools}
+    if unknown:
+        raise ValueError(f"Unknown tools: {sorted(unknown)}")
+    return [t for t in tools if t.name in names]
 
 
 def _text(text: str) -> dict:

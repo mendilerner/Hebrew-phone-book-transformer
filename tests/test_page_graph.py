@@ -34,7 +34,7 @@ def fake_llm(monkeypatch, kind, entries=()):
         calls.append(("classify", model))
         return page.PageCheck(observations="fake", reason="fake", kind=kind), 0.001
 
-    def fake_read(image_path, profile, model, max_calls=4, min_confidence=0.8):
+    def fake_read(image_path, profile, model, *args):
         calls.append(("read", model))
         rows = [e.name for e in entries]
         return page.PageRead(rows=rows, entries=list(entries)), 0.01
@@ -110,7 +110,7 @@ def test_cli_page_tier_best_uses_opus_and_saves_json(monkeypatch, tmp_path):
     monkeypatch.setattr(cli_page, "OUTPUT_DIR", tmp_path / "output")
 
     result = cli_page.run_page("p05.jpg", tier="best")
-    path = cli_page.save_json(result, "p05.jpg", "best")
+    path = cli_page.save_json(result, cli_page.run_name("p05.jpg", "best", None))
 
     assert {model for _, model in calls} == {"anthropic:claude-opus-5-5"}
     saved = json.loads(path.read_text(encoding="utf-8"))

@@ -97,14 +97,17 @@ Steps:
 6. Put columns that are not name/phone/address/notes into extra.
 7. confidence: about 0.9 or more only when every letter and digit is clear.
 
-Tools: you can look at parts of the page again, in full resolution.
+{tools}
+
+Book layout:
+{profile}"""
+
+
+TOOLS_PROMPT = """Tools: you can look at parts of the page again, in full resolution.
 The page has a red ruler (it is not part of the book): on the left, 0 = top and
 100 = bottom of the page; on the top, 0 = left and 100 = right. Use these numbers
 in the tools. Count the rows yourself from the top, starting at 1.
-- zoom_band(top, bottom): a band across the page, bigger (small or unclear letters
-  and digits; take a taller band when ink crosses the row lines).
-- crop_region(x0, y0, x1, y1): any part of the page, for example a note in a margin.
-- check_phone(text) is a free check.
+{tool_lines}
 You have at most {max_calls} tool calls for this page.
 
 How to work:
@@ -113,9 +116,19 @@ How to work:
    letter or digit is unclear. Use the calls on the rows you are least sure about.
 3. Then give your final answer, with what you learned from the tools.
 Answer without any tool call only when every entry is fully clear.
+"""
 
-Book layout:
-{profile}"""
+NO_TOOLS_PROMPT = """The page has a red ruler (it is not part of the book). Count the rows
+yourself from the top, starting at 1.
+"""
+
+# One line per tool for the prompt. Only the tools turned on are listed (setting agent_tools).
+TOOL_LINES = {
+    "zoom_band": "- zoom_band(top, bottom): a band across the page, bigger (small or unclear\n"
+    "  letters and digits; take a taller band when ink crosses the row lines).",
+    "crop_region": "- crop_region(x0, y0, x1, y1): any part of the page, for example a note.",
+    "check_phone": "- check_phone(text): a free check of a phone number you read.",
+}
 
 
 def _profile_text(profile: LayoutProfile) -> str:
@@ -164,27 +177,35 @@ def ask_read_page(
     model: str,
     max_calls: int = 4,
     min_confidence: float = 0.8,
+    tools: list[str] | None = None,
 ) -> tuple[PageRead, float]:
     """The read_page agent: the prebuilt create_agent (a model <-> tools loop graph).
 
     ToolCallLimitMiddleware stops the tools after `max_calls` calls, so the model
     must answer with what it has (decision 0008). ProviderStrategy gets the final
     answer as structured output with the provider's own JSON mode (decision 0010).
+
+    `tools`: names of the tools to turn on (None = all). With no tools the agent
+    is one model call, like build step 4. This lets you measure each tool.
     """
     img = load_page(image_path)
-    prompt = READ_PROMPT.format(
-        profile=_profile_text(profile),
-        max_calls=max_calls,
-    )
-    agent = create_agent(
-        chat_model(model),
-        tools=make_tools(img),
-        system_prompt=prompt,
-        response_format=ProviderStrategy(PageRead),
-        middleware=[
+    page_tools = make_tools(img, tools)
+    if page_tools:
+        lines = "\n".join(TOOL_LINES[t.name] for t in page_tools)
+        tools_text = TOOLS_PROMPT.format(tool_lines=lines, max_calls=max_calls)
+        middleware = [
             ToolCallLimitMiddleware(run_limit=max_calls),
             check_before_answer(min_confidence),
-        ],
+        ]
+    else:
+        tools_text, middleware = NO_TOOLS_PROMPT, []
+    prompt = READ_PROMPT.format(profile=_profile_text(profile), tools=tools_text)
+    agent = create_agent(
+        chat_model(model),
+        tools=page_tools,
+        system_prompt=prompt,
+        response_format=ProviderStrategy(PageRead),
+        middleware=middleware,
     )
     content = [to_block(with_ruler(img)), {"type": "text", "text": "Read this page."}]
     result = agent.invoke({"messages": [HumanMessage(content=content)]})
@@ -212,8 +233,9 @@ def read_page(state: PageState, config: RunnableConfig) -> dict:
     model = model_name("read_page", config)
     max_calls = setting(config, "agent_tool_calls")
     min_confidence = setting(config, "min_confidence")
+    tools = setting(config, "agent_tools")
     page, cost = ask_read_page(
-        state["image_path"], state["profile"], model, max_calls, min_confidence
+        state["image_path"], state["profile"], model, max_calls, min_confidence, tools
     )
     draft = [_to_contact(entry, state["page_no"]) for entry in page.entries]
     if state["page_kind"] == "different_layout":

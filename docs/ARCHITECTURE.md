@@ -130,7 +130,10 @@ See [decision 0011](decisions/0011-simple-page-subgraph.md).
 - `src/phonebook/images.py`: `list_pages`, `load_page`, `image_block` (upright, max 2576 px,
   JPEG), `crop_block` (a part of the page in full resolution).
 - `src/phonebook/ruler.py`: `with_ruler` (a % ruler on the left and top of the page).
-- `src/phonebook/tools.py`: `make_tools(img)`: the 3 agent tools for one page.
+- `src/phonebook/tools.py`: `make_tools(img, names)`: the agent tools for one page; setting
+  `agent_tools` turns tools on and off (None = all, [] = no tools).
+- `src/phonebook/cli_tool.py`: run one tool by hand and save what the model would see.
+- `src/phonebook/cli_score.py`: score runs against a hand-checked page (`truth/`, gitignored).
 - `src/phonebook/layout.py`: `load_book`, `discover_layout`, `add_sample_page`,
   `confirm_layout` (interrupt) and the router `route_after_discover`.
 - `src/phonebook/book_graph.py`: `build_book_graph()` (layout part so far).

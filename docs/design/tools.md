@@ -1,5 +1,7 @@
 # Tool list
 
+> Superseded in part: [decision 0015](../decisions/0015-two-model-consensus.md) removes the agent tools (section 1). The page is read by two models with no tools.
+
 Three kinds of "tools". Only the first kind is a real LLM tool.
 
 | Kind | Who calls it | Costs money? |

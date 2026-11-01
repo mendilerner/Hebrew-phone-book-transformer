@@ -1,6 +1,6 @@
 # 0007: Cost control
 
-Date: 2026-10-12 · Status: Accepted
+Date: 2026-10-12 · Status: Accepted · Points 1 and 4 (one read per page, capped agent): superseded by 0015
 
 **Problem:** A book has 400-500 contacts. With many LLM calls per row on a
 strong model, one run can cost about $40-80 (estimate, not measured). During

@@ -12,6 +12,9 @@ PRICES: dict[str, tuple[float, float]] = {
     "anthropic:claude-opus-5-5": (4.00, 20.00),
     "anthropic:claude-sonnet-5-5": (2.00, 10.00),
     "anthropic:claude-haiku-5-5": (0.10, 0.50),
+    # OpenAI API prices, checked 2026-11-03 (developers.openai.com/api/docs/pricing).
+    "openai:gpt-6-astra": (10.00, 50.00),
+    "openai:gpt-6.1-sol": (2.00, 10.00),
 }
 
 

@@ -1,9 +1,10 @@
 # Architecture
 
-Status: **building the MVP** (steps 1-4 done: setup, free helpers, layout discovery, simple page sub-graph).
+Status: **building the MVP** (steps 1-4 and 7 done: setup, free helpers, layout discovery,
+page sub-graph, two-model consensus reading ([decision 0015](decisions/0015-two-model-consensus.md),
+details in [0016](decisions/0016-consensus-build-details.md))).
 The agent with tools (step 6, decisions 0013-0014) was tried on a branch and **not merged**: it helped very little.
-**Next: two-model consensus reading** ([decision 0015](decisions/0015-two-model-consensus.md)):
-designed, not built yet. Last update: 2026-11-03.
+Last update: 2026-11-03.
 
 ## Goal
 
@@ -71,7 +72,10 @@ Code: [`src/phonebook/schema.py`](../src/phonebook/schema.py) (was the draft `do
 - TypedDict for graph state: `BookState` (parent), `PageState` (sub-graph).
 - `contacts`, `review_queue`, `decisions` use the `add` reducer, so parallel
   pages append results. Same key names in both states → passed up automatically;
-  page-only keys (`skeleton`, `draft`, `attempts`) stay private.
+  page-only keys (`reads`, `skeleton`, `draft`, `doubts`, `tie_answers`, `checks`) stay
+  private. `reads` has the `add` reducer too: the two readers write it in the same step.
+- `Contact.source` (agreed / tie-breaker / human; empty = review) and `Contact.readings`
+  (every reader's text, for the human) ([decision 0016](decisions/0016-consensus-build-details.md)).
 - Images are stored as file paths, not bytes.
 - `BookState.layout_clear` (bool): `discover_layout`'s answer, read by its router
   ([decision 0010](decisions/0010-layout-discovery-loop.md)).
@@ -85,9 +89,9 @@ See [decision 0007](decisions/0007-cost-control.md). In short:
 - Two reads per page (Claude + GPT) + up to two small calls when there are doubts
   ([decision 0015](decisions/0015-two-model-consensus.md)).
 - Free Python checks before any LLM grader.
-- Models come from config (`config["configurable"]`): cheap first, strong only as a fix.
-  Tiers: `cheap` = Haiku, `strong` = Sonnet, `best` = Opus (only when a run asks for it;
-  the CLIs have `--tier`).
+- Models come from config (`config["configurable"]`). Tiers: `cheap` = Haiku,
+  `strong` = Sonnet, `best` = Opus, `gpt` = `openai:gpt-6-astra`. Defaults: the readers
+  and the tie-breaker use `best` and `gpt`, `classify_page` uses `cheap`.
 - Budget: default **$10 per book**, split into a share per page. Over budget → review queue.
 - Development: LLM answer cache on disk, 3-page test set, Batch API for full runs.
 
@@ -113,14 +117,18 @@ the state), and the Batch API.
 
 ## Page reading rules (MVP)
 
-See [decision 0011](decisions/0011-simple-page-subgraph.md).
+See [decision 0011](decisions/0011-simple-page-subgraph.md) and
+[decision 0016](decisions/0016-consensus-build-details.md).
 - The LLM copies phones as raw text; Python (`parse_phone`) decides digits and kind.
+- Ditto marks mean "same as the row above"; a phone in the name column still belongs to
+  the entry; short numbers (a house number) stay in the name or address.
 - Handwriting: the prompt lists Hebrew letters (and digits) that look alike. For names
   the LLM may use its knowledge of common Hebrew names, but only to choose between
-  readings the ink allows. If it can't decide, it lists the readings in `doubts`, gives
-  a low confidence (so the entry goes to review), and writes `?` for an unreadable letter.
-- An entry goes to `review_queue` if it has any issue (LLM doubt or rule check)
-  or `confidence < min_confidence` (setting, default 0.8). Otherwise to `contacts`.
+  readings the ink allows. It writes `?` for an unreadable letter.
+- An entry goes to `contacts` only when both readers agree (after normalizing), or when
+  the tie-breaker is sure and `verify` says yes. Everything else, and anything a free
+  rule check flags, goes to `review_queue` with every reading. The models' own
+  confidence does not decide.
 - `different_layout` pages: read with the book layout, every entry goes to review
   (no `rediscover_layout` in the MVP).
 
@@ -128,6 +136,11 @@ See [decision 0011](decisions/0011-simple-page-subgraph.md).
 
 - `src/phonebook/settings.py`: defaults (model ladder, tier per node, budget, cache path).
   Any value can be changed per run with `config["configurable"]`.
+- `src/phonebook/reads.py`: what the LLMs return (`PageRead`, `TieBreak`, `Verify`) and
+  `ModelRead`, `Doubt`.
+- `src/phonebook/consensus.py`: free compare: `norm_phone`, `norm_name`, `pair_entries`
+  (by phone, then by name), `compare` (agreed / doubts), `resolve` (one doubt after
+  tie-break and verify).
 - `src/phonebook/llm.py`: `get_model(node, config, tier)` picks the model for a node.
 - `src/phonebook/cost.py`: `cost_usd(answer, model)` from token usage; cached answers cost 0.
 - `src/phonebook/llm_cache.py`: dev-mode disk cache for LLM answers.
@@ -140,14 +153,16 @@ See [decision 0011](decisions/0011-simple-page-subgraph.md).
   `confirm_layout` (interrupt) and the router `route_after_discover`.
 - `src/phonebook/book_graph.py`: `build_book_graph()` (layout part so far).
 - `src/phonebook/cli.py`: run the graph in the terminal and answer the interrupt.
-- `src/phonebook/page.py`: `classify_page` (LLM router), `read_page` (one LLM call for
-  now), `finalize_page` (rule checks; good → `contacts`, doubtful → `review_queue`).
-- `src/phonebook/page_graph.py`: `build_page_graph()`.
+- `src/phonebook/page.py`: `classify_page` (LLM router), `read_claude` and `read_gpt`
+  (one LLM call each, in parallel), `compare_reads`, `tie_break` (Claude, one call for
+  all doubts), `verify` (GPT, one call), `finalize_page` (rule checks; trusted →
+  `contacts`, the rest → `review_queue`), and the routers.
+- `src/phonebook/page_graph.py`: `build_page_graph()` (parallel readers + a join edge).
 - `src/phonebook/debug.py`: `--debug` mode: a callback handler prints every LLM message
   (images shortened), and `graph.stream(stream_mode="updates")` prints every node's update.
 - `src/phonebook/cli_page.py`: read one page with the saved layout; `--tier` picks the
   model; saves the full result to `output/<page>.<tier>.json` (gitignored).
-- `src/phonebook/export.py`: `export_excel` (phones as text) and `export_vcf`
+- `src/phonebook/export.py`: `export_excel` (phones as text, a `source` column) and `export_vcf`
   (only contacts with a mobile number).
 
 ## Not decided yet

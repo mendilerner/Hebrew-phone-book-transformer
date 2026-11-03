@@ -10,10 +10,10 @@ Build order (decision 0009):
 2. ✓ Free helpers (phones, rule checks, export)
 3. ✓ `discover_layout` + `confirm_layout`
 4. ✓ Simple page sub-graph
-5. ○ Book graph: `Send` + reducers
+5. ○ Book graph: `Send` + reducers (next)
 6. ✗ Agent tools + 4-call limit (tried, not merged: it helped very little; replaced by 0015)
-7. ○ Two-model consensus: Claude + GPT read, compare, `tie_break`, `verify`
-   (next, decision 0015; replaces the retry loop and the agent tools)
+7. ✓ Two-model consensus: Claude + GPT read, compare, `tie_break`, `verify`
+   (decisions 0015, 0016; replaces the retry loop and the agent tools)
 8. ○ `page_fix`
 9. ○ Human review + export, full-book run, real cost
 

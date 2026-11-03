@@ -18,7 +18,7 @@ from phonebook.schema import Contact
         ("077-1234567", "0771234567", "landline"),
         ("1-800-123-456", "1800123456", "landline"),
         ("6123456", "6123456", "landline"),  # old 7-digit number: no area code added
-        ("*3140", None, "short_code"),
+        ("*9999", None, "short_code"),
         ("050-12345", "05012345", "unknown"),  # a digit is missing
         ("05O-1234567", None, "unknown"),  # letter O instead of 0
     ],
@@ -63,17 +63,18 @@ def test_export_excel_keeps_phones_as_text(tmp_path):
     header = [c.value for c in sheet[1]]
     assert header[:3] == ["name", "phone 1", "phone 2"]
     assert "עיר" in header
+    assert "source" in header
     assert sheet["B2"].value == "050-1234567"  # leading 0 kept
     assert sheet["B3"].value == "6123456"
 
 
 def test_vcf_only_for_contacts_with_mobile(tmp_path):
-    rows = [contact("כהן, משה", "050-1234567", "*3140"), contact("לוי", "03-1234567")]
+    rows = [contact("כהן, משה", "050-1234567", "*9999"), contact("לוי", "03-1234567")]
     text = export_vcf(rows, tmp_path / "out.vcf").read_text(encoding="utf-8")
     assert text.count("BEGIN:VCARD") == 1
     assert "FN:כהן\\, משה" in text
     assert "TEL;TYPE=CELL:0501234567" in text
-    assert "TEL;TYPE=VOICE:*3140" in text
+    assert "TEL;TYPE=VOICE:*9999" in text
 
 
 def test_vcard_shape():

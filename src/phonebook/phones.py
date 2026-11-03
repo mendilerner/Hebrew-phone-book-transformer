@@ -1,12 +1,12 @@
 """Turn a phone number as written into a `Phone` (no LLM, free).
 
 Israeli rules:
-- mobile:     05X + 7 digits = 10 digits (054-5947474)
+- mobile:     05X + 7 digits = 10 digits (050-1234567)
 - landline:   02/03/04/08/09 + 7 digits = 9 digits, 07X + 7 digits = 10 digits,
               1-700 / 1-800 numbers = 10 digits
 - old number: 7 digits, no area code. Kept as written: we never add an area
               code (decision 0002).
-- short code: a star and 2-5 digits (*3140)
+- short code: a star and 2-5 digits (*9999)
 Anything else is "unknown", so the grader can flag it.
 """
 

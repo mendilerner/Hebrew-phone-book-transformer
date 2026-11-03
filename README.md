@@ -8,6 +8,7 @@ The design is in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 ```bash
 uv sync                        # create .venv and install the project + dev tools
 export ANTHROPIC_API_KEY=...   # needed only for real LLM calls (tests don't need it)
+export OPENAI_API_KEY=...      # the second page reader (GPT); an API key, not ChatGPT Plus
 ```
 
 ## Check the code
@@ -28,9 +29,12 @@ It calls the API once (my estimate: about $0.01-0.05); running it again on the s
 ## Try one page
 
 ```bash
-uv run python -m phonebook.cli_page samples/page_05.jpg              # read one page (Haiku)
-uv run python -m phonebook.cli_page samples/page_05.jpg --tier best  # same page with Opus
+uv run python -m phonebook.cli_page samples/page_05.jpg                # Claude (Opus) + GPT read the page
+uv run python -m phonebook.cli_page samples/page_05.jpg --tier strong  # Claude side with Sonnet (cheaper)
 ```
+Names both models read the same are trusted. For the others Claude picks between the two
+readings, and GPT checks each answer Claude is sure about. The rest is listed "To review"
+with every reading.
 Add `--debug` to see every message sent to the LLM, its answer, and every graph step
 (printed to stderr; save it with `2> debug.txt`).
 
@@ -42,8 +46,9 @@ uv run python -m phonebook.cli_score truth/page_05.json output/page_05.*.json   
 ```
 It shows names right, letters right, phones right, missing and extra entries, and cost.
 
-`--tier` is `cheap` (Haiku), `strong` (Sonnet) or `best` (Opus). `phonebook.cli` has it too.
-The result is saved to `output/page_05.best.json` (gitignored, it has real numbers).
+`--tier` is `cheap` (Haiku), `strong` (Sonnet) or `best` (Opus) for the Claude nodes.
+`phonebook.cli` has it too. The result is saved to `output/page_05.default.json`
+(gitignored, it has real numbers).
 Run layout discovery first: it saves the layout to `.cache/profile.json`.
 
 Phone book photos are private: keep them in `samples/` (ignored by git).

@@ -1,6 +1,6 @@
 # Graph topology
 
-Status: accepted (PR #1, 2026-10-12).
+Status: accepted (PR #1, 2026-10-12). The page sub-graph part is changed by [decision 0015](../decisions/0015-two-model-consensus.md) (two-model consensus); this file shows the old plan.
 
 Legend: **R** = rule router, **L** = LLM router, **A** = ReAct agent,
 ⏸ = `interrupt` (human), ⇉ = `Send` (parallel fan-out).

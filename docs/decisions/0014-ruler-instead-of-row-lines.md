@@ -1,6 +1,6 @@
 # 0014: A ruler instead of finding row lines
 
-Date: 2026-10-15 · Status: Accepted · Supersedes: row lines and `row_view` in 0013,
+Date: 2026-10-15 · Status: Superseded by 0015 · Supersedes: row lines and `row_view` in 0013,
 the "ink crosses this line?" check in 0003
 
 **Context:** `find_row_lines` (OpenCV) was tested on real photos. At best it found

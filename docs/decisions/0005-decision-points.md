@@ -1,6 +1,6 @@
 # 0005: Where the agent makes choices
 
-Date: 2026-10-12 · Status: Accepted
+Date: 2026-10-12 · Status: Accepted · Points 3-5 (agent read, grade, retry fix): superseded by 0015
 
 **Decision:** Use three kinds of decisions on purpose: rule routers (R),
 LLM routers (L), and a ReAct agent inside the page-reading node (A).

@@ -8,8 +8,9 @@ per page")
 - The `read_page` agent with tools (zoom, crop, ruler) helped very little in the
   user's tests (tool check levels 1 and 2).
 - A manual test (one page, 16 rows, one prompt, three models) showed:
-  - Claude (Opus) and GPT agree on all phones except one. Gemini Flash-Lite gets the
-    phones right but the names badly wrong.
+  - Claude (Opus) and GPT agree on all phones except one. Gemini Flash-Lite (free)
+    gets the phones right but the names badly wrong, so it is not used: a third
+    provider (key, package, privacy rules) is not worth that small gain.
   - After small cleanup, Claude and GPT agree on 7 of 16 names. **All 7 were right.**
   - In 7 of the 9 other rows, one of the two was right. In 2 rows both were wrong,
     and in both of those rows they disagreed.
@@ -19,15 +20,14 @@ per page")
 
 **Decision:**
 1. **Read the page with two models in parallel:** Claude and GPT, the same prompt
-   (based on the user's manual-test prompt and the layout profile). Gemini is an
-   optional third reader for **phones only** (setting, off by default: on the free
-   tier Google may use the data, so use a paid key for real pages).
+   (based on the user's manual-test prompt and the layout profile).
 2. **Compare in Python (free):**
    - Normalize: phones = digits and `*` only; names = no `'`, `"`, `-`, single
      spaces.
    - Match rows by an agreed phone number, not by row number. Rows with no shared
      phone are matched by name similarity and position, or go to doubts.
-   - Phones: Claude and GPT agree → OK. With Gemini on: a majority of 3.
+   - Phones: Claude and GPT must agree too. A phone they disagree on makes the row
+     a doubt.
    - Names: Claude and GPT must agree exactly (after normalizing).
    - Both agree → `contacts`, `source = "agreed"`. Otherwise → the row is a doubt.
 3. **Tie-break (Claude, one call per page):** the **full page** again (no crops) and
@@ -58,8 +58,8 @@ alone can't reach the Excel.
 - Cost per page: 2 reads + up to 2 small calls (only when there are doubts), about
   4 calls instead of 1-5. The $10 per book budget stays.
 - New API keys on the user's computer only (`.env`, gitignored):
-  `OPENAI_API_KEY`, and `GOOGLE_API_KEY` if Gemini is on. A ChatGPT or Claude
+  `OPENAI_API_KEY`. A ChatGPT or Claude
   subscription does not include API calls.
-- New packages: `langchain-openai` (and `langchain-google-genai` for Gemini).
+- New package: `langchain-openai`.
 - One page is a small sample. After the build, measure on hand-checked pages
   (`cli_score`): are agreed names ever wrong? Is the verify step needed?

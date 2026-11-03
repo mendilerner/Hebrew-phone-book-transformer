@@ -23,7 +23,7 @@ BOOK GRAPH (parent)
 
 PAGE SUB-GRAPH (one per page)
   check the page against the profile -> entries / empty / cover / different layout
-  read the page with Claude and GPT in parallel (+ Gemini for phones, optional)
+  read the page with Claude and GPT in parallel
   compare (Python): match rows by phone, normalize
     -> both agree -> contacts (source "agreed")
     -> doubts -> tie_break (Claude, full page, readings A/B) -> sure?

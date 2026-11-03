@@ -34,6 +34,14 @@ uv run python -m phonebook.cli_page samples/page_05.jpg --tier best  # same page
 Add `--debug` to see every message sent to the LLM, its answer, and every graph step
 (printed to stderr; save it with `2> debug.txt`).
 
+### Score a run (free)
+
+```bash
+uv run python -m phonebook.cli_score --make-truth output/page_05.best.json truth/page_05.json  # copy a run, then fix it by hand
+uv run python -m phonebook.cli_score truth/page_05.json output/page_05.*.json                 # compare runs with it
+```
+It shows names right, letters right, phones right, missing and extra entries, and cost.
+
 `--tier` is `cheap` (Haiku), `strong` (Sonnet) or `best` (Opus). `phonebook.cli` has it too.
 The result is saved to `output/page_05.best.json` (gitignored, it has real numbers).
 Run layout discovery first: it saves the layout to `.cache/profile.json`.

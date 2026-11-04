@@ -123,8 +123,9 @@ See [decision 0011](decisions/0011-simple-page-subgraph.md) and
 - Ditto marks mean "same as the row above"; a phone in the name column still belongs to
   the entry; short numbers (a house number) stay in the name or address.
 - Handwriting: the prompt lists Hebrew letters (and digits) that look alike. For names
-  the LLM may use its knowledge of common Hebrew names, but only to choose between
-  readings the ink allows. It writes `?` for an unreadable letter.
+  the readers copy the letters they see and must not "fix" a name to a common name
+  or word ([decision 0017](decisions/0017-copy-letters-not-common-names.md)).
+  They write `?` for an unreadable letter.
 - An entry goes to `contacts` only when both readers agree (after normalizing), or when
   the tie-breaker is sure and `verify` says yes. Everything else, and anything a free
   rule check flags, goes to `review_queue` with every reading. The models' own

@@ -24,5 +24,7 @@ tie-breaker 10, final 10 of 17; phones 23 of 23 in the final. verify did not run
 (the tie-breaker was sure about 0 of 13 doubts). Next: improve the name reading
 (prompt rule against "fixing" names, page context, word-by-word merge), one
 change at a time, each measured with `--stages`.
+- Try 1 (decision 0017, proposed): readers copy letters, no "fixing" to common
+  names. Claude 6 → 10, GPT 8 → 6, final 10 → 9. Not better yet.
 
 Open question for the user: should `.vcf` include landline and `*` numbers (now: yes)?

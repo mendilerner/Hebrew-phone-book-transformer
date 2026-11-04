@@ -16,7 +16,7 @@ from pathlib import Path
 
 from phonebook.cli import PROFILE_FILE
 from phonebook.debug import run_graph
-from phonebook.llm import enable_disk_cache, model_name, setting
+from phonebook.llm import enable_disk_cache, load_api_keys, model_name, setting
 from phonebook.page_graph import build_page_graph
 from phonebook.schema import LayoutProfile
 
@@ -71,6 +71,7 @@ def main() -> None:
     parser.add_argument("--debug", action="store_true", help="print LLM messages and graph steps")
     args = parser.parse_args()
 
+    load_api_keys()  # ANTHROPIC_API_KEY / OPENAI_API_KEY from .env
     enable_disk_cache()  # same page + same model + same prompt -> saved answer, $0
     result = run_page(args.image, args.tier, args.debug)
     for title, key in (("Good", "contacts"), ("To review", "review_queue")):

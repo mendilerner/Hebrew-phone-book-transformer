@@ -7,9 +7,15 @@ The design is in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ```bash
 uv sync                        # create .venv and install the project + dev tools
-export ANTHROPIC_API_KEY=...   # needed only for real LLM calls (tests don't need it)
-export OPENAI_API_KEY=...      # the second page reader (GPT); an API key, not ChatGPT Plus
 ```
+
+Put the API keys in a file `.env` in the project folder (it is gitignored; tests don't need it):
+```
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
+```
+Don't set `ANTHROPIC_API_KEY` as a system or user variable: Claude Code reads it too, and
+then it uses the paid key instead of your Claude subscription (and Remote Control won't start).
 
 ## Check the code
 

@@ -47,11 +47,11 @@ Steps:
 1. First write the text of every row (the skeleton), so nothing is skipped.
 2. Then turn the rows into entries. One entry can use 2 rows (for example a name
    on one row and its phone on the next). Ink can cross the row lines.
-3. Names, cities and streets: read the letter shapes first. Then use what you know
-   about common Hebrew names. If the shapes fit a common name (for example a common
-   family name like לרנר) better than a rare word (like לבקר), choose the common one.
-   Use this only to choose between readings that the ink allows. Never change a
-   name to one the ink does not show.
+3. Names, cities and streets: copy the letters you see, one by one. Do NOT fix a
+   name to a common name or word you know: many family names are rare, and a rare
+   name that is one letter away from a common one (for example ק at the end instead
+   of ך) is still the rare name. Write what the ink shows, even if it looks strange.
+   A family name often repeats on nearby rows: compare how it is written there.
 4. If you still can't decide, do not guess: write your best reading, put every
    possible reading in doubts (for example "לרנר or לבקר?"), and give a low
    confidence. Write ? for a letter you can't read at all.

@@ -1,6 +1,8 @@
 from langchain_core.globals import set_llm_cache
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage
+from langchain_core.outputs import ChatGeneration
+from pydantic import BaseModel
 
 from phonebook.cost import cost_usd
 from phonebook.llm import model_name
@@ -46,3 +48,17 @@ def test_disk_cache_answer_is_free(tmp_path):
         assert cost_usd(again, "anthropic:claude-haiku-5-5") == 0
     finally:
         set_llm_cache(None)
+
+
+class Parsed(BaseModel):
+    name: str
+
+
+def test_disk_cache_loads_a_gpt_answer_with_parsed(tmp_path):
+    # GPT structured output keeps a Pydantic object in additional_kwargs["parsed"],
+    # which dumps can't save. The cache rebuilds it from the JSON content.
+    cache = DiskCache(tmp_path / "llm.sqlite")
+    message = AIMessage('{"name": "כהן משה"}', additional_kwargs={"parsed": Parsed(name="כהן משה")})
+    cache.update("read this page", "gpt", [ChatGeneration(message=message)])
+    again = cache.lookup("read this page", "gpt")
+    assert again[0].message.additional_kwargs["parsed"] == {"name": "כהן משה"}

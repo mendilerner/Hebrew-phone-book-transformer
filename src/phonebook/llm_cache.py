@@ -4,6 +4,7 @@ Same prompt + same model -> the saved answer comes back, and costs $0.
 LangChain checks this cache before it calls the API.
 """
 
+import json
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -31,7 +32,7 @@ class DiskCache(BaseCache):
         row = self._db.execute(
             "SELECT value FROM cache WHERE key = ?", (self._key(prompt, llm_string),)
         ).fetchone()
-        return loads(row[0], allowed_objects=ALLOWED) if row else None
+        return loads(_repair_parsed(row[0]), allowed_objects=ALLOWED) if row else None
 
     def update(self, prompt: str, llm_string: str, return_val: RETURN_VAL_TYPE) -> None:
         self._db.execute(
@@ -43,3 +44,22 @@ class DiskCache(BaseCache):
     def clear(self, **kwargs: Any) -> None:
         self._db.execute("DELETE FROM cache")
         self._db.commit()
+
+
+def _repair_parsed(text: str) -> str:
+    """GPT answers keep the parsed Pydantic object in additional_kwargs["parsed"].
+
+    `dumps` can't save it (it writes "not_implemented"), and `loads` then fails.
+    The same answer is also in the message content as JSON text, so we put that
+    dict back: langchain_openai accepts a dict in "parsed".
+    """
+    if '"not_implemented"' not in text:
+        return text
+    generations = json.loads(text)
+    for gen in generations:
+        message = gen.get("kwargs", {}).get("message", {}).get("kwargs", {})
+        extra = message.get("additional_kwargs", {})
+        content = message.get("content")
+        if extra.get("parsed", {}).get("type") == "not_implemented" and isinstance(content, str):
+            extra["parsed"] = json.loads(content)
+    return json.dumps(generations)

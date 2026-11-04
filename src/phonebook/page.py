@@ -84,8 +84,10 @@ For each row:
 3. choice: A or B if it matches the ink exactly; new if both are wrong and you can
    read the row; cant_tell if you can't decide.
 4. name and phones: the reading you chose, phones as written (empty for cant_tell).
-5. sure: true only if every letter and digit is clear on the page. Never guess:
-   a wrong "sure" can put a wrong name in the final list.
+5. sure: true when the ink clearly fits your reading better than any other reading,
+   even if the handwriting is not perfect. A second model checks every sure answer
+   against the page, so you don't need to be 100% certain. sure = false only when
+   two readings still fit the ink equally well.
 
 Book layout:
 {profile}"""

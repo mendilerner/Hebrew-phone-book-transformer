@@ -17,4 +17,12 @@ Build order (decision 0009):
 8. ○ `page_fix`
 9. ○ Human review + export, full-book run, real cost
 
+Measuring: `cli_score --stages` scores each stage of one run (claude, gpt,
+tie-breaker, final) and the verify check, against a hand-checked page in `truth/`.
+First real page (18 rows, 17 entries, about $0.27): names exact claude 6, gpt 8,
+tie-breaker 10, final 10 of 17; phones 23 of 23 in the final. verify did not run
+(the tie-breaker was sure about 0 of 13 doubts). Next: improve the name reading
+(prompt rule against "fixing" names, page context, word-by-word merge), one
+change at a time, each measured with `--stages`.
+
 Open question for the user: should `.vcf` include landline and `*` numbers (now: yes)?

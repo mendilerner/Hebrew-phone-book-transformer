@@ -3,8 +3,11 @@
 1. Make an answer key from a run, then fix it by hand (it has real numbers, so it
    lives in truth/, which is gitignored):
      uv run python -m phonebook.cli_score --make-truth output/p05.strong.json truth/p05.json
+   If you marked a run by hand with "the_true_name" on an entry, --make-truth uses it.
 2. Compare one or more runs with it, for example with and without a tool:
      uv run python -m phonebook.cli_score truth/p05.json output/p05.strong.*.json
+3. Score each stage of one run (claude, gpt, tie-breaker, final) and the verify check:
+     uv run python -m phonebook.cli_score truth/p05.json output/p05.default.json --stages
 
 For each run: names exactly right, letters right in names, phones exactly right,
 missing and extra entries, and cost. Entries are matched by name and phone, not by
@@ -30,7 +33,11 @@ def make_truth(run_path: Path, truth_path: Path) -> None:
     run = json.loads(run_path.read_text(encoding="utf-8"))
     entries = sorted(_entries(run), key=lambda e: e["rows"])
     truth = [
-        {"rows": e["rows"], "name": e["name"], "phones": [p["raw"] for p in e["phones"]]}
+        {
+            "rows": e["rows"],
+            "name": e.get("the_true_name", e["name"]),
+            "phones": [p["raw"] for p in e["phones"]],
+        }
         for e in entries
     ]
     truth_path.parent.mkdir(parents=True, exist_ok=True)
@@ -80,11 +87,81 @@ def score(truth: list[dict], run: dict) -> dict:
     }
 
 
+# ---------------------------------------------------------------------------
+# --stages: what each stage of the consensus graph read (decision 0015)
+# ---------------------------------------------------------------------------
+
+STAGES = {"claude": "read_claude", "gpt": "read_gpt", "tie-breaker": "tie_break", "final": None}
+
+
+def _parse_reading(text: str) -> tuple[str, list[str]]:
+    """'כהן משה | 050-1234567, 03-1234567' -> ('כהן משה', ['050-1234567', '03-1234567'])."""
+    name, _, phones = text.partition(" | ")
+    return name.strip(), [p.strip() for p in phones.split(",") if p.strip()]
+
+
+def stage_run(run: dict, stage: str) -> dict:
+    """The run as one stage saw it, built from the `readings` saved on each entry.
+
+    A reader that has no reading for an entry did not find it. The tie-breaker
+    only answers doubts: for the other entries it keeps the final answer.
+    """
+    if STAGES[stage] is None:
+        return run
+    entries = []
+    for e in _entries(run):
+        text = e.get("readings", {}).get(stage)
+        if text is None:
+            if stage == "tie-breaker":
+                entries.append(e)
+            continue
+        name, phones = _parse_reading(text)
+        entries.append({"rows": e["rows"], "name": name, "phones": phones})
+    cost = sum(
+        d.get("cost_usd") or 0 for d in run.get("decisions", []) if d["node"] == STAGES[stage]
+    )
+    return {"contacts": entries, "review_queue": [], "cost_usd": cost}
+
+
+def verify_report(truth: list[dict], run: dict) -> str:
+    """Did verify say yes to right tie-breaker answers and no to wrong ones?
+
+    Read from the final entries. A tie-breaker answer with no "the readers disagree"
+    issue = verify said yes (a free rule check can still add other issues);
+    "the check said no" = verify said no.
+    """
+    counts = {"yes": [0, 0], "no": [0, 0]}  # [right, wrong]
+    for e in _entries(run):
+        text = e.get("readings", {}).get("tie-breaker")
+        if text is None:
+            continue
+        disagree = [i for i in e.get("issues", []) if i.startswith("the readers disagree")]
+        if not disagree:
+            said = "yes"
+        elif any("check said no" in issue for issue in disagree):
+            said = "no"
+        else:
+            continue  # the tie-breaker was not sure, so verify did not check it
+        name, phones = _parse_reading(text)
+        got = {"name": name, "phones": phones}
+        want = max(truth, key=lambda t: _match(t, got), default=None)
+        right = want is not None and want["name"] == name
+        counts[said][0 if right else 1] += 1
+    if not sum(map(sum, counts.values())):
+        return "verify: did not run"
+    (yes_right, yes_wrong), (no_right, no_wrong) = counts["yes"], counts["no"]
+    return (
+        f"verify: said yes to {yes_right} right + {yes_wrong} wrong names, "
+        f"said no to {no_right} right + {no_wrong} wrong names"
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--make-truth", nargs=2, metavar=("RUN_JSON", "TRUTH_JSON"))
     parser.add_argument("truth", nargs="?")
     parser.add_argument("runs", nargs="*")
+    parser.add_argument("--stages", action="store_true", help="score each stage of a run")
     args = parser.parse_args()
     if args.make_truth:
         make_truth(Path(args.make_truth[0]), Path(args.make_truth[1]))
@@ -92,8 +169,14 @@ def main() -> None:
         return
     truth = json.loads(Path(args.truth).read_text(encoding="utf-8"))
     for run_path in args.runs:
-        result = score(truth, json.loads(Path(run_path).read_text(encoding="utf-8")))
-        print(f"{run_path}\n  " + " | ".join(f"{k}: {v}" for k, v in result.items()))
+        run = json.loads(Path(run_path).read_text(encoding="utf-8"))
+        print(run_path)
+        for stage in STAGES if args.stages else ["final"]:
+            result = score(truth, stage_run(run, stage))
+            label = f"{stage:<12} " if args.stages else ""
+            print(f"  {label}" + " | ".join(f"{k}: {v}" for k, v in result.items()))
+        if args.stages:
+            print(f"  {verify_report(truth, run)}")
 
 
 if __name__ == "__main__":

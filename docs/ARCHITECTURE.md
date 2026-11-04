@@ -129,6 +129,9 @@ See [decision 0011](decisions/0011-simple-page-subgraph.md) and
   the tie-breaker is sure and `verify` says yes. Everything else, and anything a free
   rule check flags, goes to `review_queue` with every reading. The models' own
   confidence does not decide.
+- The tie-breaker says "sure" when the ink clearly fits one reading better than the
+  others; it does not need to be 100% certain, because `verify` checks every sure
+  answer ([decision 0018](decisions/0018-bolder-tie-break.md)).
 - `different_layout` pages: read with the book layout, every entry goes to review
   (no `rediscover_layout` in the MVP).
 

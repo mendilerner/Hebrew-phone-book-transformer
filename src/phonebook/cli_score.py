@@ -126,17 +126,19 @@ def stage_run(run: dict, stage: str) -> dict:
 def verify_report(truth: list[dict], run: dict) -> str:
     """Did verify say yes to right tie-breaker answers and no to wrong ones?
 
-    Read from the final entries: source "tie-breaker" = verify said yes,
-    the issue "the check said no" = verify said no.
+    Read from the final entries. A tie-breaker answer with no "the readers disagree"
+    issue = verify said yes (a free rule check can still add other issues);
+    "the check said no" = verify said no.
     """
     counts = {"yes": [0, 0], "no": [0, 0]}  # [right, wrong]
     for e in _entries(run):
         text = e.get("readings", {}).get("tie-breaker")
         if text is None:
             continue
-        if e.get("source") == "tie-breaker":
+        disagree = [i for i in e.get("issues", []) if i.startswith("the readers disagree")]
+        if not disagree:
             said = "yes"
-        elif any("check said no" in issue for issue in e.get("issues", [])):
+        elif any("check said no" in issue for issue in disagree):
             said = "no"
         else:
             continue  # the tie-breaker was not sure, so verify did not check it

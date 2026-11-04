@@ -63,7 +63,7 @@ def test_stages_score_each_reader_and_verify():
         "gpt": "לוי דוד | 03-1234567",
         "tie-breaker": "לוי דוד | 03-1234567",
     }
-    verified["source"] = "tie-breaker"
+    verified["issues"] = ["a free rule check flagged it"]  # still a "yes" from verify
     refused = entry("פרץ רון", "6123456", rows=(3,))  # tie-breaker wrong, verify said no
     refused["readings"] = {
         "claude": "פרץ רות | 6123456",

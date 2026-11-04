@@ -16,7 +16,7 @@ def export_excel(contacts: list[Contact], path: str | Path) -> Path:
         + [f"phone {i + 1}" for i in range(max_phones)]
         + ["address", "notes"]
         + extra_keys
-        + ["page", "rows", "confidence", "issues"]
+        + ["source", "page", "rows", "confidence", "issues"]
     )
 
     sheet_book = Workbook()
@@ -31,7 +31,8 @@ def export_excel(contacts: list[Contact], path: str | Path) -> Path:
             + phones
             + [c.address or "", c.notes or ""]
             + [c.extra.get(key, "") for key in extra_keys]
-            + [c.page, ", ".join(map(str, c.rows)), c.confidence, "; ".join(c.issues)]
+            + [c.source or "", c.page, ", ".join(map(str, c.rows)), c.confidence]
+            + ["; ".join(c.issues)]
         )
     for row in sheet.iter_rows(min_row=2, min_col=2, max_col=1 + max_phones):
         for cell in row:

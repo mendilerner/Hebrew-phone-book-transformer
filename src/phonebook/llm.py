@@ -1,5 +1,6 @@
 """Pick the model for a node (decision 0007: models come from config, not from code)."""
 
+from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
 from langchain_core.globals import set_llm_cache
 from langchain_core.language_models import BaseChatModel
@@ -45,6 +46,17 @@ def chat_model(name: str) -> BaseChatModel:
     against it, so a long answer could be cut off. You pay only for tokens used.
     """
     return init_chat_model(name, max_tokens=16_000)
+
+
+def load_api_keys() -> None:
+    """Read API keys from a `.env` file in the project folder (gitignored).
+
+    Why a file and not a Windows variable: Claude Code also reads ANTHROPIC_API_KEY.
+    If it is set in the shell, Claude Code uses the paid API key instead of your
+    Claude subscription, and Remote Control refuses to start. A variable that is
+    already set wins over the file.
+    """
+    load_dotenv()
 
 
 def enable_disk_cache(path: str | None = None) -> None:

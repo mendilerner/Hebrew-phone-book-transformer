@@ -1,7 +1,7 @@
 """Default settings. Every value can be changed per run with config["configurable"].
 
 Example:
-    graph.invoke(state, config={"configurable": {"budget_usd": 5, "tiers": {"read_page": "strong"}}})
+    graph.invoke(state, config={"configurable": {"budget_usd": 5, "tiers": {"read_claude": "strong"}}})
 """
 
 from pydantic import BaseModel, Field
@@ -14,23 +14,25 @@ class Settings(BaseModel):
         default_factory=lambda: {
             "cheap": "anthropic:claude-haiku-5-5",
             "strong": "anthropic:claude-sonnet-5-5",
-            "best": "anthropic:claude-opus-5-5",  # not used by default; pick it per run
+            "best": "anthropic:claude-opus-5-5",
+            # The second reader (decision 0015). Needs OPENAI_API_KEY on your computer.
+            "gpt": "openai:gpt-6-astra",
         }
     )
-    # Which ladder step each LLM node starts on. choose_fix can move a row to "strong".
+    # Which model each LLM node uses. The two readers must be different providers
+    # (decision 0015): a name is trusted when both read it the same.
     tiers: dict[str, str] = Field(
         default_factory=lambda: {
             "discover_layout": "strong",  # runs once per book, worth a good model
             "classify_page": "cheap",
-            "read_page": "cheap",
-            "grade_entries": "cheap",
-            "choose_fix": "cheap",
-            "reread_row": "cheap",
+            "read_claude": "best",
+            "read_gpt": "gpt",
+            "tie_break": "best",  # Claude picks between the two readings
+            "verify": "gpt",  # GPT confirms what the tie-breaker was sure about
         }
     )
     budget_usd: float = 10.0  # max $ per book (decision 0007)
     max_attempts: int = 3  # retries per row
-    min_confidence: float = 0.8  # below this, an entry goes to the review queue
     cache_path: str = ".cache/llm.sqlite"  # dev mode: saved LLM answers
 
 

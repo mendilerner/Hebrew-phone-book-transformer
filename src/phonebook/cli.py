@@ -14,12 +14,13 @@ from langgraph.types import Command
 
 from phonebook.book_graph import build_book_graph
 from phonebook.debug import run_graph
-from phonebook.llm import enable_disk_cache
+from phonebook.llm import enable_disk_cache, load_api_keys
 
 PROFILE_FILE = Path(".cache/profile.json")
 
 
 def main(folder: str, tier: str | None = None, debug: bool = False) -> None:
+    load_api_keys()  # ANTHROPIC_API_KEY / OPENAI_API_KEY from .env
     enable_disk_cache()  # same pages again -> saved answer, $0
     graph = build_book_graph()
     config = {"configurable": {"thread_id": str(uuid.uuid4())}}

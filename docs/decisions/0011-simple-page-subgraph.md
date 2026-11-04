@@ -1,6 +1,6 @@
 # 0011: Simple page sub-graph
 
-Date: 2026-10-14 · Status: Accepted
+Date: 2026-10-14 · Status: Accepted · The confidence split and one read per page: superseded by 0016
 
 **Decision (build step 4):**
 - `classify_page` → `read_page` → `finalize_page`. Empty and cover pages end

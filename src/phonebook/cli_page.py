@@ -2,7 +2,9 @@
 
 uv run python -m phonebook.cli samples/                           # first: find the layout
 uv run python -m phonebook.cli_page samples/p05.jpg               # then: read one page
-uv run python -m phonebook.cli_page samples/p05.jpg --tier best   # same page with Opus
+uv run python -m phonebook.cli_page samples/p05.jpg --tier strong # Claude side with Sonnet
+
+The page is read by Claude and GPT (decision 0015): needs ANTHROPIC_API_KEY and OPENAI_API_KEY.
 uv run python -m phonebook.cli_page samples/p05.jpg --debug       # show LLM messages and steps
 
 The full result is saved as JSON in output/ (gitignored: it has real numbers).
@@ -14,17 +16,18 @@ from pathlib import Path
 
 from phonebook.cli import PROFILE_FILE
 from phonebook.debug import run_graph
-from phonebook.llm import enable_disk_cache, model_name, setting
+from phonebook.llm import enable_disk_cache, load_api_keys, model_name, setting
 from phonebook.page_graph import build_page_graph
 from phonebook.schema import LayoutProfile
 
-LLM_NODES = ("classify_page", "read_page")
+LLM_NODES = ("classify_page", "read_claude", "read_gpt", "tie_break", "verify")
+CLAUDE_NODES = ("classify_page", "read_claude", "tie_break")  # --tier changes these
 OUTPUT_DIR = Path("output")
 
 
 def run_page(image_path: str, tier: str | None = None, debug: bool = False) -> dict:
-    """Run the page graph. `tier` (cheap/strong/best) sets the model for every LLM node."""
-    config = {"configurable": {"tiers": {node: tier for node in LLM_NODES}}} if tier else {}
+    """Run the page graph. `tier` (cheap/strong/best) sets the model of the Claude nodes."""
+    config = {"configurable": {"tiers": {node: tier for node in CLAUDE_NODES}}} if tier else {}
     profile = LayoutProfile.model_validate_json(PROFILE_FILE.read_text(encoding="utf-8"))
     out = run_graph(
         build_page_graph(),
@@ -63,11 +66,12 @@ def main() -> None:
     parser.add_argument(
         "--tier",
         choices=sorted(setting(None, "models")),
-        help="model for all LLM nodes: cheap=Haiku, strong=Sonnet, best=Opus",
+        help="model for the Claude nodes: cheap=Haiku, strong=Sonnet, best=Opus (default)",
     )
     parser.add_argument("--debug", action="store_true", help="print LLM messages and graph steps")
     args = parser.parse_args()
 
+    load_api_keys()  # ANTHROPIC_API_KEY / OPENAI_API_KEY from .env
     enable_disk_cache()  # same page + same model + same prompt -> saved answer, $0
     result = run_page(args.image, args.tier, args.debug)
     for title, key in (("Good", "contacts"), ("To review", "review_queue")):
@@ -75,7 +79,11 @@ def main() -> None:
         for c in result[key]:
             phones = ", ".join(p["raw"] for p in c["phones"])
             issues = f"  <- {'; '.join(c['issues'])}" if c["issues"] else ""
-            print(f"  rows {c['rows']}: {c['name']} | {phones} ({c['confidence']:.2f}){issues}")
+            source = f" [{c['source']}]" if c["source"] else ""
+            print(f"  rows {c['rows']}: {c['name']} | {phones}{source}{issues}")
+            if not c["source"]:  # for the human: every reading
+                for reader, text in c["readings"].items():
+                    print(f"      {reader}: {text}")
     print("\nModels:")
     for d in result["decisions"]:
         if d["model"]:

@@ -15,6 +15,8 @@ from typing import Annotated, Literal, TypedDict
 
 from pydantic import BaseModel, Field
 
+from phonebook.reads import Check, Doubt, ModelRead, TieAnswer
+
 # ---------------------------------------------------------------------------
 # Data models (Pydantic)
 # ---------------------------------------------------------------------------
@@ -43,7 +45,7 @@ class LayoutProfile(BaseModel):
 
 
 class Phone(BaseModel):
-    raw: str = Field(description="Exactly as written, e.g. '054-5947474' or '*3140'")
+    raw: str = Field(description="Exactly as written, e.g. '050-1234567' or '*9999'")
     digits: str | None = Field(description="Digits only; None if not a normal number")
     kind: Literal["mobile", "landline", "short_code", "unknown"] = "unknown"
 
@@ -59,7 +61,12 @@ class Contact(BaseModel):
     page: int
     rows: list[int] = Field(description="A list, because one entry can span 2 rows")
     confidence: float = Field(ge=0, le=1)
-    issues: list[str] = Field(default_factory=list, description="What the grader found")
+    issues: list[str] = Field(default_factory=list, description="Why a human must check it")
+    # Who decided this entry (decision 0015): both readers agreed, the tie-breaker
+    # (confirmed by the other model), or a human. None = not decided (review queue).
+    source: Literal["agreed", "tie-breaker", "human"] | None = None
+    # Every reading, for the human: {"claude": "name | phones", "gpt": ..., "tie-breaker": ...}
+    readings: dict[str, str] = Field(default_factory=dict)
 
 
 class Decision(BaseModel):
@@ -87,9 +94,14 @@ class PageState(TypedDict):
 
     # working data (stays inside the page sub-graph)
     page_kind: Literal["entries", "empty", "cover", "different_layout"] | None
-    skeleton: list[str]  # rough row texts from the full-page read
-    draft: list[Contact]  # entries being checked / retried
-    attempts: dict[int, int]  # row -> retries used
+    # The two readers run in parallel and both write `reads`: a reducer is needed,
+    # or LangGraph raises an error when two nodes write one key in the same step.
+    reads: Annotated[list[ModelRead], add]
+    skeleton: list[str]  # Claude's row texts from the full-page read
+    draft: list[Contact]  # agreed entries, and entries only one reader found
+    doubts: list[Doubt]  # rows where the readers disagree
+    tie_answers: list[TieAnswer]  # the tie-breaker's answer per doubt
+    checks: list[Check]  # the verifier's yes/no per sure answer
 
     # output (same key names as BookState -> merged by the reducers)
     contacts: Annotated[list[Contact], add]
